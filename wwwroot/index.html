@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Správa filmů a seriálů</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body { font-family: 'Inter', sans-serif; line-height: 1.6; background-color: #f4f4f9; color: #333; margin: 0; padding: 20px; }
+        main { max-width: 1000px; margin: auto; background: #fff; padding: 20px 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1, h2 { color: #0056b3; border-bottom: 2px solid #007bff; padding-bottom: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; vertical-align: middle; }
+        th { background-color: #007bff; color: white; }
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        td img { max-width: 60px; height: auto; border-radius: 4px; }
+        td.actions { min-width: 230px; text-align: right; }
+        input[type="text"], input[type="search"] { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; margin-bottom: 10px;}
+        .form-container, .search-container { margin-bottom: 30px; }
+        button { padding: 8px 12px; border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 14px; margin-left: 5px; }
+        button.primary { background-color: #007bff; }
+        button.secondary { background-color: #6c757d; }
+        button.edit { background-color: #ffc107; }
+        button.delete { background-color: #dc3545; }
+        button.save { background-color: #28a745; }
+        #episode-manager { display: none; }
+        .season-block { margin-top: 20px; } 
+        .episode-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f1f1f1; }
+        .episode-item span { flex-basis: 40%; } .episode-item input { flex-grow: 1; }
+        #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #28a745; color: white; padding: 15px 25px; border-radius: 5px; visibility: hidden; opacity: 0; transition: opacity 0.5s; z-index: 1000; }
+        #toast.show { visibility: visible; opacity: 1; } #toast.error { background-color: #dc3545; }
+    </style>
+</head>
+<body>
+    <main>
+        <div id="main-view">
+            <h1>Správa filmů a seriálů</h1>
+            <div class="search-container">
+                <h2>Vyhledat v mé databázi</h2>
+                <input type="search" id="search-box" placeholder="Začni psát název...">
+            </div>
+            <div class="form-container">
+                <h2 id="form-title">Přidat položku</h2>
+                <form id="add-item-form">
+                    <input type="hidden" id="itemId">
+                    <input type="text" id="title" placeholder="Název filmu nebo seriálu pro vyhledání na TMDb" required>
+                    <input type="text" id="fileIdent" placeholder="ID souboru z Webshare (jen pro filmy)">
+                    <div class="form-buttons">
+                        <button type="submit" class="primary" id="submit-button">Přidat film</button>
+                        <button type="button" class="primary" id="add-show-button">Přidat seriál</button>
+                        <button type="button" class="secondary" id="cancel-button" style="display:none;">Zrušit úpravu</button>
+                    </div>
+                </form>
+            </div>
+            <h2>Seznam v databázi</h2>
+            <table id="items-table">
+                <thead><tr><th>Plakát</th><th>Název</th><th>Typ</th><th style="text-align: right;">Akce</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="episode-manager">
+            <h2 id="show-title-header"></h2>
+            <div id="seasons-container"></div>
+            <button class="secondary" onclick="closeEpisodeManager()" style="margin-top: 20px;">Zpět na hlavní seznam</button>
+        </div>
+    </main>
+    <div id="toast"></div>
+
+    <script>
+        const mainView = document.getElementById('main-view');
+        const episodeManager = document.getElementById('episode-manager');
+        const itemsTableBody = document.querySelector('#items-table tbody');
+        const searchBox = document.getElementById('search-box');
+        const addItemForm = document.getElementById('add-item-form');
+        const itemIdInput = document.getElementById('itemId');
+        const titleInput = document.getElementById('title');
+        const fileIdentInput = document.getElementById('fileIdent');
+        const formTitle = document.getElementById('form-title');
+        const submitButton = document.getElementById('submit-button');
+        const addShowButton = document.getElementById('add-show-button');
+        const cancelButton = document.getElementById('cancel-button');
+        const toast = document.getElementById('toast');
+
+        const apiMoviesUrl = '/api/Movies';
+        const apiShowsUrl = '/api/Shows';
+        const apiEpisodesUrl = '/api/Episodes';
+        const apiSearchUrl = '/api/Search';
+
+        function showToast(message, isError = false) { toast.textContent = message; toast.className = 'show' + (isError ? ' error' : ''); setTimeout(() => { toast.className = toast.className.replace('show', ''); }, 3000); }
+
+        function displayResults(items) {
+            itemsTableBody.innerHTML = '';
+            if (!items || items.length === 0) { itemsTableBody.innerHTML = `<tr><td colspan="4">Nebyly nalezeny žádné položky.</td></tr>`; return; }
+            items.forEach(item => {
+                const row = itemsTableBody.insertRow();
+                const type = item.hasOwnProperty('fileIdent') ? 'Film' : 'Seriál';
+
+                row.insertCell().innerHTML = item.posterPath ? `<img src="https://image.tmdb.org/t/p/w92${item.posterPath}" alt="Plakát">` : '';
+                row.insertCell().textContent = item.title;
+                row.insertCell().textContent = type;
+                const actionsCell = row.insertCell();
+                actionsCell.className = 'actions';
+                if (type === 'Film') {
+                     actionsCell.innerHTML = `<button class="edit" onclick='editMovie(${item.id}, "${item.title.replace(/"/g, '&quot;')}", "${item.fileIdent || ''}")'>Upravit ID</button> <button class="delete" onclick="deleteItem(${item.id}, true)">Smazat</button>`;
+                } else {
+                    actionsCell.innerHTML = `<button class="primary" onclick="manageShow(${item.id})">Spravovat epizody</button> <button class="delete" onclick="deleteItem(${item.id}, false)">Smazat</button>`;
+                }
+            });
+        }
+
+        async function fetchAllItems() {
+            try {
+                const [moviesRes, showsRes] = await Promise.all([fetch(apiMoviesUrl), fetch(apiShowsUrl)]);
+                const movies = await moviesRes.json();
+                const shows = await showsRes.json();
+                const allItems = [...movies, ...shows].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+                displayResults(allItems);
+            } catch (error) { console.error('Chyba při načítání:', error); }
+        }
+
+        async function search(query) {
+            if (!query || query.trim() === '') { fetchAllItems(); return; }
+            try {
+                const response = await fetch(`${apiSearchUrl}?query=${encodeURIComponent(query)}`);
+                const results = await response.json();
+                displayResults(results);
+            } catch (error) { console.error('Chyba při vyhledávání:', error); }
+        }
+        searchBox.addEventListener('input', () => search(searchBox.value));
+
+        function cancelEdit() {
+            itemIdInput.value = '';
+            titleInput.value = '';
+            fileIdentInput.value = '';
+            titleInput.disabled = false;
+            submitButton.textContent = 'Přidat film';
+            addShowButton.style.display = 'inline-block';
+            formTitle.textContent = 'Přidat položku';
+            cancelButton.style.display = 'none';
+        }
+        cancelButton.addEventListener('click', cancelEdit);
+
+        function editMovie(id, title, fileIdent) {
+            itemIdInput.value = id;
+            titleInput.value = title;
+            titleInput.disabled = true;
+            fileIdentInput.value = fileIdent;
+            submitButton.textContent = 'Uložit změny ID';
+            addShowButton.style.display = 'none';
+            formTitle.textContent = `Upravit ID pro: ${title}`;
+            cancelButton.style.display = 'block';
+            window.scrollTo(0, 0);
+        }
+
+        addItemForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const id = itemIdInput.value;
+            const isUpdating = !!id;
+
+            const url = isUpdating ? `${apiMoviesUrl}/${id}` : apiMoviesUrl;
+            const method = isUpdating ? 'PUT' : 'POST';
+            const body = isUpdating 
+                ? { fileIdent: fileIdentInput.value }
+                : { title: titleInput.value, fileIdent: fileIdentInput.value };
+
+            try {
+                const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                if (!response.ok) throw new Error('Chyba serveru');
+                showToast(isUpdating ? 'ID filmu úspěšně upraveno!' : 'Film úspěšně přidán!');
+                cancelEdit();
+                search(searchBox.value || '');
+            } catch (error) { showToast('Chyba při ukládání filmu.', true); }
+        });
+
+        addShowButton.addEventListener('click', async () => {
+            const showData = { title: titleInput.value };
+            try {
+                const response = await fetch(apiShowsUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(showData) });
+                if (!response.ok) throw new Error('Chyba serveru');
+                showToast('Seriál úspěšně přidán!');
+                addItemForm.reset();
+                search(searchBox.value || '');
+            } catch (error) { showToast('Chyba při přidávání seriálu.', true); }
+        });
+
+        async function deleteItem(id, isMovie) {
+            const url = isMovie ? `${apiMoviesUrl}/${id}` : `${apiShowsUrl}/${id}`;
+            const itemType = isMovie ? 'Film' : 'Seriál';
+            if (confirm(`Opravdu smazat: ${itemType.toLowerCase()}?`)) {
+                await fetch(url, { method: 'DELETE' });
+                fetchAllItems();
+            }
+        }
+
+        function closeEpisodeManager() {
+            episodeManager.style.display = 'none';
+            mainView.style.display = 'block';
+        }
+
+        async function manageShow(showId) {
+            try {
+                const response = await fetch(`${apiShowsUrl}/${showId}`);
+                if (!response.ok) throw new Error('Seriál nenalezen');
+                const show = await response.json();
+
+                document.getElementById('show-title-header').textContent = `Epizody pro: ${show.title}`;
+                const seasonsContainer = document.getElementById('seasons-container');
+                seasonsContainer.innerHTML = '';
+
+                show.seasons.sort((a,b) => a.seasonNumber - b.seasonNumber).forEach(season => {
+                    if(season.seasonNumber === 0) return;
+                    const seasonBlock = document.createElement('div');
+                    seasonBlock.className = 'season-block';
+                    seasonBlock.innerHTML = `<h3>Série ${season.seasonNumber}</h3>`;
+                    season.episodes.sort((a,b) => a.episodeNumber - b.episodeNumber).forEach(episode => {
+                        const episodeItem = document.createElement('div');
+                        episodeItem.className = 'episode-item';
+                        episodeItem.innerHTML = `
+                            <span>E${String(episode.episodeNumber).padStart(2, '0')}: ${episode.title}</span>
+                            <input type="text" id="ep-${episode.id}" value="${episode.fileIdent || ''}" placeholder="ID souboru epizody (např. vsgrvEEWju)">
+                            <button class="save" onclick="saveEpisodeIdent(${episode.id})">Uložit</button>
+                        `;
+                        seasonBlock.appendChild(episodeItem);
+                    });
+                    seasonsContainer.appendChild(seasonBlock);
+                });
+
+                mainView.style.display = 'none';
+                episodeManager.style.display = 'block';
+            } catch (error) { showToast('Nepodařilo se načíst detaily seriálu.', true); }
+        }
+
+        async function saveEpisodeIdent(episodeId) {
+            const input = document.getElementById(`ep-${episodeId}`);
+            const fileIdent = input.value.trim();
+            try {
+                const response = await fetch(`${apiEpisodesUrl}/${episodeId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fileIdent: fileIdent })
+                });
+                if (!response.ok) throw new Error('Chyba při ukládání');
+                showToast('ID epizody uloženo!');
+                input.style.backgroundColor = '#d4edda';
+                setTimeout(() => { input.style.backgroundColor = ''; }, 1500);
+            } catch(error) {
+                input.style.backgroundColor = '#f8d7da';
+                showToast('Chyba při ukládání ID.', true);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchAllItems);
+    </script>
+</body>
+</html>
