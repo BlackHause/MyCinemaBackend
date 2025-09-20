@@ -21,11 +21,8 @@ builder.Services.AddHttpClient<TMDbService>();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
