@@ -2,9 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using KodiBackend.Data;
 using KodiBackend.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Text.Json; // Přidáno pro práci s JSON
 
 namespace KodiBackend.Controllers
 {
@@ -32,43 +32,46 @@ namespace KodiBackend.Controllers
             {
                 Movies = await _context.Movies.AsNoTracking().ToListAsync(),
                 Shows = await _context.Shows
-                    .Include(s => s.Seasons)
-                    .ThenInclude(s => s.Episodes)
-                    .AsNoTracking()
-                    .ToListAsync()
+                    .Include(s => s.Seasons).ThenInclude(s => s.Episodes)
+                    .AsNoTracking().ToListAsync()
             };
             return Ok(backup);
         }
 
+        // TATO FUNKCE JE NOVÁ A LEPŠÍ
         [HttpPost("import")]
-        public async Task<IActionResult> ImportDatabase([FromBody] DatabaseBackup backup)
+        public async Task<IActionResult> ImportDatabase(IFormFile file)
         {
-            // SMAZÁNÍ STARÝCH DAT
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest("Nebyl nahrán žádný soubor.");
+            }
+
+            DatabaseBackup? backup;
+            try
+            {
+                // Načteme data přímo z nahraného souboru
+                using var stream = file.OpenReadStream();
+                backup = await JsonSerializer.DeserializeAsync<DatabaseBackup>(stream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch (JsonException ex)
+            {
+                return BadRequest($"Chyba při čtení souboru JSON: {ex.Message}");
+            }
+
+            if (backup == null)
+            {
+                return BadRequest("Soubor se nepodařilo zpracovat.");
+            }
+
+            // Smazání starých dat
             _context.Movies.RemoveRange(_context.Movies);
             _context.Shows.RemoveRange(_context.Shows);
             await _context.SaveChangesAsync();
 
-            // NAHRÁNÍ NOVÝCH DAT - chytřejší postup
-            if (backup.Movies != null)
-            {
-                await _context.Movies.AddRangeAsync(backup.Movies);
-            }
-            if (backup.Shows != null)
-            {
-                // Musíme odebrat reference, které způsobují chybu
-                foreach (var show in backup.Shows)
-                {
-                    foreach (var season in show.Seasons)
-                    {
-                        season.Show = null; // Ignoruj referenci na seriál
-                        foreach (var episode in season.Episodes)
-                        {
-                            episode.Season = null; // Ignoruj referenci na sezónu
-                        }
-                    }
-                }
-                await _context.Shows.AddRangeAsync(backup.Shows);
-            }
+            // Nahrání nových dat
+            if (backup.Movies != null) await _context.Movies.AddRangeAsync(backup.Movies);
+            if (backup.Shows != null) await _context.Shows.AddRangeAsync(backup.Shows);
             await _context.SaveChangesAsync();
 
             return Ok(new { message = $"Import úspěšný. Naimportováno {backup.Movies?.Count ?? 0} filmů a {backup.Shows?.Count ?? 0} seriálů." });
