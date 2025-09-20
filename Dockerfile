@@ -15,9 +15,6 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/out ./
 
-# TENTO ŘÁDEK ZKOPÍRUJE NAŠI LOKÁLNÍ DATABÁZI
-COPY kodi.db /app/data/kodi.db
-
 RUN mkdir -p /app/data
 
 ENTRYPOINT ["dotnet", "KodiBackend.dll"]
