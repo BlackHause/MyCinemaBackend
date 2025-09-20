@@ -38,27 +38,26 @@ namespace KodiBackend.Controllers
                     .AsNoTracking()
                     .ToListAsync()
             };
-
             return Ok(backup);
         }
 
         [HttpPost("import")]
         public async Task<IActionResult> ImportDatabase([FromBody] DatabaseBackup backup)
         {
-            // SMAZÁNÍ STARÝCH DAT
-            _context.Movies.RemoveRange(_context.Movies);
-            _context.Shows.RemoveRange(_context.Shows);
+            // SMAZÁNÍ STARÝCH DAT na serveru
+            var allEpisodes = await _context.Episodes.ToListAsync();
+            if(allEpisodes.Any()) _context.Episodes.RemoveRange(allEpisodes);
+            var allSeasons = await _context.Seasons.ToListAsync();
+            if(allSeasons.Any()) _context.Seasons.RemoveRange(allSeasons);
+            var allShows = await _context.Shows.ToListAsync();
+            if(allShows.Any()) _context.Shows.RemoveRange(allShows);
+            var allMovies = await _context.Movies.ToListAsync();
+            if(allMovies.Any()) _context.Movies.RemoveRange(allMovies);
             await _context.SaveChangesAsync();
 
-            // NAHRÁNÍ NOVÝCH DAT
-            if (backup.Movies != null)
-            {
-                _context.Movies.AddRange(backup.Movies);
-            }
-            if (backup.Shows != null)
-            {
-                _context.Shows.AddRange(backup.Shows);
-            }
+            // NAHRÁNÍ NOVÝCH DAT ze souboru
+            if (backup.Movies != null) _context.Movies.AddRange(backup.Movies);
+            if (backup.Shows != null) _context.Shows.AddRange(backup.Shows);
             await _context.SaveChangesAsync();
 
             return Ok(new { message = $"Import úspěšný. Naimportováno {backup.Movies?.Count ?? 0} filmů a {backup.Shows?.Count ?? 0} seriálů." });
