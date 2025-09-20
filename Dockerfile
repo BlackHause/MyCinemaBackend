@@ -15,8 +15,10 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/out ./
 
-# Vytvoření složky pro trvalá data (databázi)
-RUN mkdir /app/data
+# TENTO ŘÁDEK PŘIDÁME - zkopíruje naši lokální databázi do image
+COPY kodi.db /app/data/kodi.db
 
-# Spuštění aplikace
+# Upravíme mkdir pro jistotu, kdyby složka už existovala
+RUN mkdir -p /app/data
+
 ENTRYPOINT ["dotnet", "KodiBackend.dll"]
