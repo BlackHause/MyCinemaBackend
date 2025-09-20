@@ -32,4 +32,10 @@ app.UseStaticFiles();
 
 app.UseAuthorization();
 app.MapControllers();
+// Automaticky spustí migraci databáze při startu
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    dbContext.Database.Migrate();
+}
 app.Run();

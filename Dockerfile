@@ -15,6 +15,9 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/out ./
 
+# TENTO ŘÁDEK TEĎ PŘIDÁME - zkopíruje naši lokální databázi
+COPY kodi.db /app/data/kodi.db
+
 # Upravíme mkdir pro jistotu, kdyby složka už existovala
 RUN mkdir -p /app/data
 
