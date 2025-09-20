@@ -8,7 +8,6 @@ using System.Collections.Generic;
 
 namespace KodiBackend.Controllers
 {
-    // Pomocná třída pro zabalení dat
     public class DatabaseBackup
     {
         public List<Movie> Movies { get; set; } = new();
@@ -44,20 +43,32 @@ namespace KodiBackend.Controllers
         [HttpPost("import")]
         public async Task<IActionResult> ImportDatabase([FromBody] DatabaseBackup backup)
         {
-            // SMAZÁNÍ STARÝCH DAT na serveru
-            var allEpisodes = await _context.Episodes.ToListAsync();
-            if(allEpisodes.Any()) _context.Episodes.RemoveRange(allEpisodes);
-            var allSeasons = await _context.Seasons.ToListAsync();
-            if(allSeasons.Any()) _context.Seasons.RemoveRange(allSeasons);
-            var allShows = await _context.Shows.ToListAsync();
-            if(allShows.Any()) _context.Shows.RemoveRange(allShows);
-            var allMovies = await _context.Movies.ToListAsync();
-            if(allMovies.Any()) _context.Movies.RemoveRange(allMovies);
+            // SMAZÁNÍ STARÝCH DAT
+            _context.Movies.RemoveRange(_context.Movies);
+            _context.Shows.RemoveRange(_context.Shows);
             await _context.SaveChangesAsync();
 
-            // NAHRÁNÍ NOVÝCH DAT ze souboru
-            if (backup.Movies != null) _context.Movies.AddRange(backup.Movies);
-            if (backup.Shows != null) _context.Shows.AddRange(backup.Shows);
+            // NAHRÁNÍ NOVÝCH DAT - chytřejší postup
+            if (backup.Movies != null)
+            {
+                await _context.Movies.AddRangeAsync(backup.Movies);
+            }
+            if (backup.Shows != null)
+            {
+                // Musíme odebrat reference, které způsobují chybu
+                foreach (var show in backup.Shows)
+                {
+                    foreach (var season in show.Seasons)
+                    {
+                        season.Show = null; // Ignoruj referenci na seriál
+                        foreach (var episode in season.Episodes)
+                        {
+                            episode.Season = null; // Ignoruj referenci na sezónu
+                        }
+                    }
+                }
+                await _context.Shows.AddRangeAsync(backup.Shows);
+            }
             await _context.SaveChangesAsync();
 
             return Ok(new { message = $"Import úspěšný. Naimportováno {backup.Movies?.Count ?? 0} filmů a {backup.Shows?.Count ?? 0} seriálů." });
