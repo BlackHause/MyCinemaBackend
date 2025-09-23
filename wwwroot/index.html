@@ -5,109 +5,120 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Správa filmů a seriálů</title>
     <style>
-        /* --- VYLEPŠENÉ STYLY --- */
+        /* --- MODERNÍ CSS STYLY --- */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
         
         :root {
-            --primary-color: #007bff;
+            --primary-color: #007BFF;
             --secondary-color: #6c757d;
             --success-color: #28a745;
             --danger-color: #dc3545;
             --warning-color: #ffc107;
             --light-bg: #f8f9fa;
-            --gray-bg: #e9ecef;
-            --border-color: #ced4da;
-            --box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            --dark-bg: #e9ecef;
+            --border-color: #dee2e6;
+            --box-shadow: 0 0.5rem 1rem rgba(0,0,0,.05);
+            --border-radius: 0.5rem;
         }
 
         body {
             font-family: 'Inter', sans-serif;
             line-height: 1.6;
-            background-color: #f4f4f9;
-            color: #333;
+            background-color: #f4f7f9;
+            color: #343a40;
             margin: 0;
-            padding: 20px;
+            padding: 2rem;
         }
         
         main {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: auto;
-            background: #fff;
-            padding: 30px;
-            border-radius: 8px;
+            background: #ffffff;
+            padding: 2rem;
+            border-radius: var(--border-radius);
             box-shadow: var(--box-shadow);
         }
         
         h1, h2 {
-            color: #0056b3;
+            color: var(--primary-color);
             border-bottom: 2px solid var(--primary-color);
-            padding-bottom: 10px;
+            padding-bottom: 0.5rem;
             margin-top: 0;
+            margin-bottom: 1.5rem;
         }
         
         table {
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 2rem;
             box-shadow: var(--box-shadow);
-            border-radius: 8px;
+            border-radius: var(--border-radius);
             overflow: hidden;
         }
         
         th, td {
-            border: 1px solid var(--border-color);
-            padding: 15px;
+            padding: 1rem;
             text-align: left;
-            vertical-align: middle;
+            border-bottom: 1px solid var(--border-color);
         }
-        
+
         th {
             background-color: var(--primary-color);
             color: white;
             font-weight: bold;
         }
         
+        tr:last-child td {
+            border-bottom: none;
+        }
+
         tr:nth-child(even) {
             background-color: var(--light-bg);
         }
         
         td img {
-            max-width: 60px;
+            max-width: 80px;
             height: auto;
-            border-radius: 4px;
+            border-radius: var(--border-radius);
         }
         
         td.actions {
             white-space: nowrap;
+            text-align: right;
+        }
+        
+        .form-container, .search-container {
+            margin-bottom: 2rem;
         }
         
         input[type="text"], input[type="search"], select {
             width: 100%;
-            box-sizing: border-box;
-            padding: 12px;
+            padding: 0.75rem;
             border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 16px;
-            margin-bottom: 10px;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
         }
-        
-        .form-container, .search-container {
-            margin-bottom: 30px;
-        }
-        
+
         button {
-            padding: 10px 15px;
+            padding: 0.75rem 1.25rem;
             border: none;
-            border-radius: 4px;
+            border-radius: var(--border-radius);
             color: white;
             cursor: pointer;
-            font-size: 14px;
-            margin-left: 5px;
-            transition: background-color 0.2s;
+            font-size: 1rem;
+            margin-left: 0.5rem;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
         }
         
         button.primary { background-color: var(--primary-color); }
-        button.primary:hover { background-color: #0069d9; }
+        button.primary:hover { background-color: #0056b3; }
         
         button.secondary { background-color: var(--secondary-color); }
         button.secondary:hover { background-color: #5a6268; }
@@ -124,34 +135,35 @@
         #episode-manager { display: none; }
         
         .season-block {
-            margin-top: 25px;
-            padding: 15px;
+            margin-top: 2rem;
+            padding: 1.5rem;
             background-color: var(--light-bg);
-            border-radius: 6px;
+            border-radius: var(--border-radius);
         }
         
         .episode-item {
-            display: grid;
-            grid-template-columns: 1fr auto;
+            display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 12px 0;
+            flex-wrap: wrap;
+            padding: 1rem 0;
             border-bottom: 1px solid var(--border-color);
         }
+        .episode-item:last-child { border-bottom: none; }
 
-        .episode-item:last-child {
-            border-bottom: none;
+        .episode-item span {
+            flex-grow: 1;
+            margin-right: 1rem;
         }
         
         #toast {
             position: fixed;
-            bottom: 20px;
+            bottom: 2rem;
             left: 50%;
             transform: translateX(-50%);
             background-color: var(--success-color);
             color: white;
-            padding: 15px 25px;
-            border-radius: 5px;
+            padding: 1rem 2rem;
+            border-radius: var(--border-radius);
             visibility: hidden;
             opacity: 0;
             transition: opacity 0.5s, transform 0.5s;
@@ -161,16 +173,12 @@
         #toast.show {
             visibility: visible;
             opacity: 1;
-            transform: translateX(-50%) translateY(-10px);
+            transform: translateX(-50%) translateY(-1rem);
         }
         
-        #toast.error {
-            background-color: var(--danger-color);
-        }
+        #toast.error { background-color: var(--danger-color); }
         
-        .autocomplete-container {
-            position: relative;
-        }
+        .autocomplete-container { position: relative; }
         
         .autocomplete-items {
             position: absolute;
@@ -182,52 +190,51 @@
             right: 0;
             max-height: 300px;
             overflow-y: auto;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: var(--box-shadow);
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
         }
         
         .autocomplete-items div {
-            padding: 12px;
+            padding: 0.75rem;
             cursor: pointer;
             background-color: #fff;
             border-bottom: 1px solid var(--border-color);
         }
         
-        .autocomplete-items div:hover {
-            background-color: var(--gray-bg);
-        }
+        .autocomplete-items div:hover { background-color: var(--dark-bg); }
         
         .suggestion-info {
-            font-size: 0.8em;
-            color: #777;
-            margin-left: 10px;
+            font-size: 0.8rem;
+            color: var(--secondary-color);
+            margin-left: 0.5rem;
         }
         
         .links-container {
-            margin-top: 15px;
-            border: 1px solid var(--border-color);
-            padding: 15px;
-            border-radius: 6px;
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
             background-color: var(--light-bg);
         }
         
         .link-row {
             display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 0.5rem;
             align-items: center;
+            margin-bottom: 1rem;
         }
 
-        .link-row:last-child {
-            margin-bottom: 0;
-        }
+        .link-row:last-child { margin-bottom: 0; }
         
         .link-row input[type="text"] {
-            flex-grow: 2;
+            flex-grow: 1;
+            min-width: 200px;
             margin-bottom: 0;
         }
         
         .link-row select {
-            flex-grow: 1;
+            flex-grow: 0.5;
+            min-width: 100px;
             margin-bottom: 0;
         }
         
@@ -236,22 +243,55 @@
             margin-left: 0;
         }
         
-        .add-link-button {
-            margin-top: 10px;
-        }
-
         .form-buttons {
             display: flex;
-            gap: 10px;
-            margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 2rem;
         }
         
-        .form-buttons button {
-            margin-left: 0;
+        .form-buttons button { margin-left: 0; }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            transition: opacity 0.3s;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .loading-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .spinner {
+            border: 4px solid var(--dark-bg);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+    
     <main>
         <div id="main-view">
             <h1>Správa filmů a seriálů</h1>
@@ -319,18 +359,21 @@
         const toast = document.getElementById('toast');
         const linksContainer = document.getElementById('links-container');
         const addLinkButton = document.querySelector('.add-link-button');
+        const loadingOverlay = document.getElementById('loading-overlay');
 
         const apiMoviesUrl = '/api/Movies';
         const apiShowsUrl = '/api/Shows';
         const apiEpisodesUrl = '/api/Episodes';
         const apiSearchUrl = '/api/Search';
         const apiTMDbUrl = '/api/TMDb';
-        // Nový parametr pro obejití cache prohlížeče
-        const cacheBuster = `?v=${new Date().getTime()}`;
+
+        // Funkce pro zobrazení/skrytí načítání
+        function showLoading() { loadingOverlay.classList.add('visible'); }
+        function hideLoading() { loadingOverlay.classList.remove('visible'); }
 
         const autocompleteList = document.getElementById('autocomplete-list');
         let debounceTimer;
-        
+
         function handleUrlInput(inputElement) {
             clearTimeout(inputElement.dataset.debounce);
             inputElement.dataset.debounce = setTimeout(() => {
@@ -350,15 +393,13 @@
                 } else if (lowerUrl.includes('480p') || lowerUrl.includes('sd')) {
                     qualitySelect.value = '480p';
                 } else {
-                    // Můžete nechat jako '1080p' nebo vrátit na výchozí
-                    qualitySelect.value = '1080p';
+                    qualitySelect.value = '1080p'; // Defaultní hodnota
                 }
-            }, 300); // 300ms čekání po psaní
+            }, 300);
         }
         
         function handleUrlInputForEpisode(inputElement, episodeId) {
             handleUrlInput(inputElement);
-            // Automatické uložení po vložení ID
             if (inputElement.value.trim().length > 10) {
                 saveEpisodeLinks(episodeId);
             }
@@ -381,9 +422,7 @@
                 const response = await fetch(`${apiTMDbUrl}/search?query=${encodeURIComponent(query)}`);
                 if (!response.ok) return;
                 const suggestions = await response.json();
-
                 closeAllLists();
-
                 suggestions.forEach(item => {
                     const div = document.createElement("DIV");
                     div.innerHTML = `<strong>${item.title}</strong><span class="suggestion-info">${item.type} (${item.year})</span>`;
@@ -398,16 +437,16 @@
             }
         }
 
-        function closeAllLists() {
-            autocompleteList.innerHTML = '';
-        }
+        function closeAllLists() { autocompleteList.innerHTML = ''; }
         document.addEventListener("click", function (e) {
-            if (e.target !== titleInput) {
-                closeAllLists();
-            }
+            if (e.target !== titleInput) { closeAllLists(); }
         });
 
-        function showToast(message, isError = false) { toast.textContent = message; toast.className = 'show' + (isError ? ' error' : ''); setTimeout(() => { toast.className = toast.className.replace('show', ''); }, 3000); }
+        function showToast(message, isError = false) { 
+            toast.textContent = message; 
+            toast.className = 'show' + (isError ? ' error' : ''); 
+            setTimeout(() => { toast.className = toast.className.replace('show', ''); }, 3000); 
+        }
 
         function displayResults(items) {
             itemsTableBody.innerHTML = '';
@@ -415,14 +454,12 @@
             items.forEach(item => {
                 const row = itemsTableBody.insertRow();
                 const type = item.hasOwnProperty('links') ? 'Film' : 'Seriál';
-
                 row.insertCell().innerHTML = item.posterPath ? `<img src="https://image.tmdb.org/t/p/w92${item.posterPath}" alt="Plakát">` : '';
                 row.insertCell().textContent = item.title;
                 row.insertCell().textContent = type;
                 const actionsCell = row.insertCell();
                 actionsCell.className = 'actions';
                 if (type === 'Film') {
-                     // ZMĚNA: Předáváme odkazy pro úpravu
                      const linksJson = JSON.stringify(item.links);
                      actionsCell.innerHTML = `<button class="edit" onclick='editMovie(${item.id}, "${item.title.replace(/"/g, '&quot;')}", ${linksJson})'>Upravit ID</button> <button class="delete" onclick="deleteItem(${item.id}, true)">Smazat</button>`;
                 } else {
@@ -432,31 +469,41 @@
         }
         
         async function fetchAllItems() {
+            showLoading();
             try {
-                // Přidání cacheBusteru pro obejití mezipaměti prohlížeče
                 const [moviesRes, showsRes] = await Promise.all([
-                    fetch(`${apiMoviesUrl}${cacheBuster}`), 
-                    fetch(`${apiShowsUrl}${cacheBuster}`)
+                    fetch(apiMoviesUrl), 
+                    fetch(apiShowsUrl)
                 ]);
                 const movies = await moviesRes.json();
                 const shows = await showsRes.json();
                 const allItems = [...movies, ...shows].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
                 displayResults(allItems);
-            } catch (error) { console.error('Chyba při načítání:', error); }
+            } catch (error) { 
+                console.error('Chyba při načítání:', error); 
+                showToast('Chyba při načítání dat z databáze.', true);
+            } finally {
+                hideLoading();
+            }
         }
 
         async function search(query) {
             if (!query || query.trim() === '') { fetchAllItems(); return; }
+            showLoading();
             try {
-                const response = await fetch(`${apiSearchUrl}?query=${encodeURIComponent(query)}${cacheBuster}`);
+                const response = await fetch(`${apiSearchUrl}?query=${encodeURIComponent(query)}`);
                 const results = await response.json();
                 displayResults(results);
-            } catch (error) { console.error('Chyba při vyhledávání:', error); }
+            } catch (error) { 
+                console.error('Chyba při vyhledávání:', error); 
+                showToast('Chyba při vyhledávání dat.', true);
+            } finally {
+                hideLoading();
+            }
         }
         searchBox.addEventListener('input', () => search(searchBox.value));
 
-        // NOVÉ FUNKCE PRO PŘIDÁVÁNÍ ODKAZŮ
-        function addLinkRow(fileIdent = '', quality = '1080p') {
+        function addLinkRow(fileIdent = '', quality = '1080p', container = linksContainer, deleteAllowed = true) {
             const row = document.createElement('div');
             row.className = 'link-row';
             row.innerHTML = `
@@ -468,10 +515,13 @@
                 </select>
                 <button type="button" class="delete-link-button">Smazat</button>
             `;
-            linksContainer.appendChild(row);
+            if (!deleteAllowed) {
+                row.querySelector('.delete-link-button').style.display = 'none';
+            }
+            container.appendChild(row);
 
             row.querySelector('.delete-link-button').addEventListener('click', () => {
-                if (linksContainer.querySelectorAll('.link-row').length > 1) {
+                if (container.querySelectorAll('.link-row').length > 1) {
                     row.remove();
                 } else {
                     showToast('Musí být alespoň jeden odkaz.', true);
@@ -488,8 +538,6 @@
             addShowButton.style.display = 'inline-block';
             formTitle.textContent = 'Přidat položku';
             cancelButton.style.display = 'none';
-
-            // Reset formuláře pro odkazy
             linksContainer.innerHTML = '';
             addLinkRow();
         }
@@ -503,24 +551,20 @@
             addShowButton.style.display = 'none';
             formTitle.textContent = `Upravit ID pro: ${title}`;
             cancelButton.style.display = 'block';
-
-            // Vyplníme formulář odkazy
             linksContainer.innerHTML = '';
             if (links && links.length > 0) {
                 links.forEach(link => addLinkRow(link.fileIdent, link.quality));
             } else {
                 addLinkRow();
             }
-
             window.scrollTo(0, 0);
         }
 
         addItemForm.addEventListener('submit', async (event) => {
             event.preventDefault();
+            showLoading();
             const id = itemIdInput.value;
             const isUpdating = !!id;
-            
-            // Získání odkazů z formuláře
             const links = Array.from(linksContainer.querySelectorAll('.link-row')).map(row => {
                 const fileIdent = row.querySelector('.fileIdent-input').value.trim();
                 const quality = row.querySelector('.quality-select').value;
@@ -529,6 +573,7 @@
 
             if (links.length === 0) {
                 showToast('Musí být alespoň jeden odkaz!', true);
+                hideLoading();
                 return;
             }
 
@@ -544,10 +589,16 @@
                 showToast(isUpdating ? 'Odkazy filmu úspěšně upraveny!' : 'Film úspěšně přidán!');
                 cancelEdit();
                 search(searchBox.value || '');
-            } catch (error) { showToast('Chyba při ukládání filmu.', true); }
+            } catch (error) { 
+                showToast('Chyba při ukládání filmu.', true); 
+                console.error(error);
+            } finally {
+                hideLoading();
+            }
         });
 
         addShowButton.addEventListener('click', async () => {
+            showLoading();
             const showData = { title: titleInput.value };
             try {
                 const response = await fetch(apiShowsUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(showData) });
@@ -555,38 +606,54 @@
                 showToast('Seriál úspěšně přidán!');
                 addItemForm.reset();
                 search(searchBox.value || '');
-            } catch (error) { showToast('Chyba při přidávání seriálu.', true); }
+            } catch (error) { 
+                showToast('Chyba při přidávání seriálu.', true); 
+                console.error(error);
+            } finally {
+                hideLoading();
+            }
         });
 
         async function deleteItem(id, isMovie) {
             const url = isMovie ? `${apiMoviesUrl}/${id}` : `${apiShowsUrl}/${id}`;
             const itemType = isMovie ? 'Film' : 'Seriál';
             if (confirm(`Opravdu smazat: ${itemType.toLowerCase()}?`)) {
-                await fetch(url, { method: 'DELETE' });
-                fetchAllItems();
+                showLoading();
+                try {
+                    await fetch(url, { method: 'DELETE' });
+                    showToast(`${itemType} smazán.`, false);
+                    fetchAllItems();
+                } catch (error) {
+                    showToast(`Chyba při mazání ${itemType.toLowerCase()}.`, true);
+                    console.error(error);
+                } finally {
+                    hideLoading();
+                }
             }
         }
 
         function closeEpisodeManager() {
             episodeManager.style.display = 'none';
             mainView.style.display = 'block';
+            fetchAllItems();
         }
 
         async function manageShow(showId) {
+            showLoading();
             try {
-                const response = await fetch(`${apiShowsUrl}/${showId}${cacheBuster}`);
+                const response = await fetch(`${apiShowsUrl}/${showId}`);
                 if (!response.ok) throw new Error('Seriál nenalezen');
                 const show = await response.json();
-
                 document.getElementById('show-title-header').textContent = `Epizody pro: ${show.title}`;
                 const seasonsContainer = document.getElementById('seasons-container');
                 seasonsContainer.innerHTML = '';
 
                 show.seasons.sort((a,b) => a.seasonNumber - b.seasonNumber).forEach(season => {
-                    if(season.seasonNumber === 0) return;
+                    if (season.seasonNumber === 0) return;
                     const seasonBlock = document.createElement('div');
                     seasonBlock.className = 'season-block';
                     seasonBlock.innerHTML = `<h3>Série ${season.seasonNumber}</h3>`;
+                    
                     season.episodes.sort((a,b) => a.episodeNumber - b.episodeNumber).forEach(episode => {
                         const episodeItem = document.createElement('div');
                         episodeItem.className = 'episode-item';
@@ -594,14 +661,7 @@
                         
                         const linksSubContainer = document.createElement('div');
                         linksSubContainer.className = 'links-container';
-                        linksSubContainer.id = `links-container-${episode.id}`;
-
-                        const addLinkBtn = document.createElement('button');
-                        addLinkBtn.type = 'button';
-                        addLinkBtn.className = 'primary add-link-button';
-                        addLinkBtn.textContent = 'Přidat odkaz';
-                        addLinkBtn.addEventListener('click', () => addLinkRowForEpisode(episode.id));
-
+                        
                         if (episode.links && episode.links.length > 0) {
                              episode.links.forEach(link => addLinkRowForEpisode(episode.id, link.fileIdent, link.quality));
                         } else {
@@ -609,25 +669,29 @@
                         }
                         
                         episodeItem.appendChild(linksSubContainer);
-                        episodeItem.appendChild(addLinkBtn);
                         
                         seasonBlock.appendChild(episodeItem);
                     });
                     seasonsContainer.appendChild(seasonBlock);
                 });
-
                 mainView.style.display = 'none';
                 episodeManager.style.display = 'block';
-            } catch (error) { showToast('Nepodařilo se načíst detaily seriálu.', true); }
+            } catch (error) { 
+                showToast('Nepodařilo se načíst detaily seriálu.', true);
+                console.error(error);
+            } finally {
+                hideLoading();
+            }
         }
-        
-        // NOVÁ FUNKCE PRO PŘIDÁVÁNÍ ODKAZŮ K EPIZODÁM
+
         function addLinkRowForEpisode(episodeId, fileIdent = '', quality = '1080p') {
-            const linksContainer = document.getElementById(`links-container-${episodeId}`);
+            const linksContainer = document.createElement('div');
+            linksContainer.className = 'links-container';
+            
             const row = document.createElement('div');
             row.className = 'link-row';
             row.innerHTML = `
-                <input type="text" class="fileIdent-input" placeholder="ID z Webshare (např. vsgrvEEWju)" value="${fileIdent}" oninput="handleUrlInputForEpisode(this, ${episodeId})">
+                <input type="text" class="fileIdent-input" placeholder="ID z Webshare" value="${fileIdent}" oninput="handleUrlInputForEpisode(this, ${episodeId})">
                 <select class="quality-select">
                     <option value="1080p" ${quality === '1080p' ? 'selected' : ''}>1080p</option>
                     <option value="720p" ${quality === '720p' ? 'selected' : ''}>720p</option>
@@ -638,7 +702,7 @@
             `;
             
             row.querySelector('.delete-link-button').addEventListener('click', () => {
-                if (linksContainer.querySelectorAll('.link-row').length > 1) {
+                if (row.parentNode.querySelectorAll('.link-row').length > 1) {
                     row.remove();
                 } else {
                     showToast('Musí být alespoň jeden odkaz.', true);
@@ -646,10 +710,17 @@
             });
             
             linksContainer.appendChild(row);
+            const parentElement = document.querySelector(`#seasons-container .episode-item:has(span:contains("E${String(episodeId)}"))`);
+            if (parentElement) {
+                parentElement.appendChild(linksContainer);
+            }
         }
-        
+
+
         async function saveEpisodeLinks(episodeId) {
-            const linksContainer = document.getElementById(`links-container-${episodeId}`);
+            const episodeItem = document.querySelector(`#seasons-container .episode-item:has(span:contains("E${String(episodeId)}"))`);
+            const linksContainer = episodeItem.querySelector('.links-container');
+
             const links = Array.from(linksContainer.querySelectorAll('.link-row')).map(row => {
                 const fileIdent = row.querySelector('.fileIdent-input').value.trim();
                 const quality = row.querySelector('.quality-select').value;
@@ -661,6 +732,7 @@
                 return;
             }
 
+            showLoading();
             try {
                 const response = await fetch(`${apiEpisodesUrl}/${episodeId}`, {
                     method: 'PUT',
@@ -674,6 +746,8 @@
             } catch(error) {
                 linksContainer.style.backgroundColor = '#f8d7da';
                 showToast('Chyba při ukládání odkazů.', true);
+            } finally {
+                hideLoading();
             }
         }
 
@@ -681,4 +755,3 @@
     </script>
 </body>
 </html>
-}
