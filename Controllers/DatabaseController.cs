@@ -34,9 +34,14 @@ namespace KodiBackend.Controllers
         {
             var backup = new DatabaseBackup
             {
-                Movies = await _context.Movies.AsNoTracking().ToListAsync(),
+                // PŘIDÁNO .Include(m => m.Links) pro načtení odkazů k filmům
+                Movies = await _context.Movies
+                    .Include(m => m.Links) 
+                    .AsNoTracking().ToListAsync(),
+
+                // PŘIDÁNO .ThenInclude() pro načtení odkazů k epizodám
                 Shows = await _context.Shows
-                    .Include(s => s.Seasons).ThenInclude(s => s.Episodes)
+                    .Include(s => s.Seasons).ThenInclude(s => s.Episodes).ThenInclude(e => e.Links)
                     .AsNoTracking().ToListAsync()
             };
             return Ok(backup);
@@ -77,78 +82,78 @@ namespace KodiBackend.Controllers
             return Ok(new { message = $"Import úspěšný. Naimportováno {backup.Movies?.Count ?? 0} filmů a {backup.Shows?.Count ?? 0} seriálů." });
         }
         
-	[HttpPost("update-all")]
-	public async Task<IActionResult> UpdateAllMetadata()
-{
-    var movies = await _context.Movies.ToListAsync();
-    int moviesUpdated = 0;
-    foreach (var movie in movies)
-    {
-        if (string.IsNullOrEmpty(movie.Title)) continue;
-        
-        var tmdbData = await _tmdbService.GetMovieDetailsAsync(movie.Title);
-        if (tmdbData != null)
+        [HttpPost("update-all")]
+        public async Task<IActionResult> UpdateAllMetadata()
         {
-            movie.Overview = tmdbData.Overview;
-            movie.PosterPath = tmdbData.PosterPath;
-            movie.ReleaseYear = tmdbData.ReleaseYear;
-            movie.VoteAverage = tmdbData.VoteAverage;
-            movie.Runtime = tmdbData.Runtime;
-            movie.Genres = tmdbData.Genres;
-            moviesUpdated++;
-        }
-    }
-
-    var shows = await _context.Shows
-        .Include(s => s.Seasons)
-        .ThenInclude(s => s.Episodes)
-        .ToListAsync();
-    int showsUpdated = 0;
-    foreach (var existingShow in shows)
-    {
-        if (string.IsNullOrEmpty(existingShow.Title)) continue;
-
-        var tmdbData = await _tmdbService.CreateShowFromTMDb(existingShow.Title);
-        if (tmdbData != null)
-        {
-            existingShow.Overview = tmdbData.Overview;
-            existingShow.PosterPath = tmdbData.PosterPath;
-            existingShow.Genres = tmdbData.Genres;
-
-            // Chytré porovnání sérií a epizod (už nic nemaže)
-            foreach (var tmdbSeason in tmdbData.Seasons)
+            var movies = await _context.Movies.ToListAsync();
+            int moviesUpdated = 0;
+            foreach (var movie in movies)
             {
-                var existingSeason = existingShow.Seasons.FirstOrDefault(s => s.SeasonNumber == tmdbSeason.SeasonNumber);
-                if (existingSeason == null)
+                if (string.IsNullOrEmpty(movie.Title)) continue;
+                
+                var tmdbData = await _tmdbService.GetMovieDetailsAsync(movie.Title);
+                if (tmdbData != null)
                 {
-                    existingShow.Seasons.Add(tmdbSeason);
+                    movie.Overview = tmdbData.Overview;
+                    movie.PosterPath = tmdbData.PosterPath;
+                    movie.ReleaseYear = tmdbData.ReleaseYear;
+                    movie.VoteAverage = tmdbData.VoteAverage;
+                    movie.Runtime = tmdbData.Runtime;
+                    movie.Genres = tmdbData.Genres;
+                    moviesUpdated++;
                 }
-                else
+            }
+
+            var shows = await _context.Shows
+                .Include(s => s.Seasons)
+                .ThenInclude(s => s.Episodes)
+                .ToListAsync();
+            int showsUpdated = 0;
+            foreach (var existingShow in shows)
+            {
+                if (string.IsNullOrEmpty(existingShow.Title)) continue;
+
+                var tmdbData = await _tmdbService.CreateShowFromTMDb(existingShow.Title);
+                if (tmdbData != null)
                 {
-                    existingSeason.ReleaseYear = tmdbSeason.ReleaseYear;
-                    foreach (var tmdbEpisode in tmdbSeason.Episodes)
+                    existingShow.Overview = tmdbData.Overview;
+                    existingShow.PosterPath = tmdbData.PosterPath;
+                    existingShow.Genres = tmdbData.Genres;
+
+                    // Chytré porovnání sérií a epizod (už nic nemaže)
+                    foreach (var tmdbSeason in tmdbData.Seasons)
                     {
-                        var existingEpisode = existingSeason.Episodes.FirstOrDefault(e => e.EpisodeNumber == tmdbEpisode.EpisodeNumber);
-                        if (existingEpisode == null)
+                        var existingSeason = existingShow.Seasons.FirstOrDefault(s => s.SeasonNumber == tmdbSeason.SeasonNumber);
+                        if (existingSeason == null)
                         {
-                            existingSeason.Episodes.Add(tmdbEpisode);
+                            existingShow.Seasons.Add(tmdbSeason);
                         }
                         else
                         {
-                            existingEpisode.Title = tmdbEpisode.Title;
-                            existingEpisode.Overview = tmdbEpisode.Overview;
-                            existingEpisode.Runtime = tmdbEpisode.Runtime;
+                            existingSeason.ReleaseYear = tmdbSeason.ReleaseYear;
+                            foreach (var tmdbEpisode in tmdbSeason.Episodes)
+                            {
+                                var existingEpisode = existingSeason.Episodes.FirstOrDefault(e => e.EpisodeNumber == tmdbEpisode.EpisodeNumber);
+                                if (existingEpisode == null)
+                                {
+                                    existingSeason.Episodes.Add(tmdbEpisode);
+                                }
+                                else
+                                {
+                                    existingEpisode.Title = tmdbEpisode.Title;
+                                    existingEpisode.Overview = tmdbEpisode.Overview;
+                                    existingEpisode.Runtime = tmdbEpisode.Runtime;
+                                }
+                            }
                         }
                     }
+                    showsUpdated++;
                 }
             }
-            showsUpdated++;
-        }
-    }
 
-    await _context.SaveChangesAsync();
-    
-    return Ok(new { message = $"Aktualizace dokončena. Upraveno {moviesUpdated} filmů a {showsUpdated} seriálů." });
-}
+            await _context.SaveChangesAsync();
+            
+            return Ok(new { message = $"Aktualizace dokončena. Upraveno {moviesUpdated} filmů a {showsUpdated} seriálů." });
+        }
     }
 }
