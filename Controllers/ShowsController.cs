@@ -36,7 +36,7 @@ namespace KodiBackend.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Show>> GetShow(int id)
         {
-            // PŘIDÁNO: Načtení sezón, epizod a jejich odkazů
+            // TOTO JE OPRAVENÝ KÓD. PŘIDÁNO .ThenInclude() pro načtení epizod a odkazů.
             var show = await _context.Shows
                 .Include(s => s.Seasons)
                     .ThenInclude(season => season.Episodes)
