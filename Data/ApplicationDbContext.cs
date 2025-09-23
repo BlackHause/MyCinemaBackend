@@ -14,21 +14,37 @@ namespace KodiBackend.Data
         public DbSet<Show> Shows { get; set; }
         public DbSet<Season> Seasons { get; set; }
         public DbSet<Episode> Episodes { get; set; }
-        // PŘIDÁN NOVÝ ŘÁDEK
         public DbSet<WebshareLink> WebshareLinks { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Konfigurace vazeb (volitelné, ale doporučené)
-            modelBuilder.Entity<WebshareLink>()
-                .HasOne(l => l.Movie)
-                .WithMany(m => m.Links)
-                .HasForeignKey(l => l.MovieId);
+            // Konfigurace kaskádového mazání pro filmy a jejich odkazy
+            modelBuilder.Entity<Movie>()
+                .HasMany(m => m.Links)
+                .WithOne(l => l.Movie)
+                .HasForeignKey(l => l.MovieId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<WebshareLink>()
-                .HasOne(l => l.Episode)
-                .WithMany(e => e.Links)
-                .HasForeignKey(l => l.EpisodeId);
+            // Konfigurace kaskádového mazání pro seriály a jejich sezóny
+            modelBuilder.Entity<Show>()
+                .HasMany(s => s.Seasons)
+                .WithOne(s => s.Show)
+                .HasForeignKey(s => s.ShowId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Konfigurace kaskádového mazání pro sezóny a jejich epizody
+            modelBuilder.Entity<Season>()
+                .HasMany(s => s.Episodes)
+                .WithOne(e => e.Season)
+                .HasForeignKey(e => e.SeasonId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Konfigurace kaskádového mazání pro epizody a jejich odkazy
+            modelBuilder.Entity<Episode>()
+                .HasMany(e => e.Links)
+                .WithOne(l => l.Episode)
+                .HasForeignKey(l => l.EpisodeId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

@@ -36,9 +36,11 @@ namespace KodiBackend.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Show>> GetShow(int id)
         {
+            // PŘIDÁNO: Načtení sezón, epizod a jejich odkazů
             var show = await _context.Shows
                 .Include(s => s.Seasons)
-                    .ThenInclude(s => s.Episodes)
+                    .ThenInclude(season => season.Episodes)
+                        .ThenInclude(episode => episode.Links)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(s => s.Id == id);
 
@@ -58,7 +60,6 @@ namespace KodiBackend.Controllers
                 return BadRequest("Název seriálu nesmí být prázdný.");
             }
 
-            // TADY BYLA CHYBA - POUŽÍVÁME SPRÁVNÝ NÁZEV FUNKCE
             var showFromTMDb = await _tmdbService.CreateShowFromTMDb(request.Title);
             
             if (showFromTMDb == null)
