@@ -325,27 +325,42 @@
         const apiEpisodesUrl = '/api/Episodes';
         const apiSearchUrl = '/api/Search';
         const apiTMDbUrl = '/api/TMDb';
+        // Nový parametr pro obejití cache prohlížeče
+        const cacheBuster = `?v=${new Date().getTime()}`;
 
         const autocompleteList = document.getElementById('autocomplete-list');
         let debounceTimer;
-
-        // VYLEPŠENÁ FUNKCE PRO ZPRACOVÁNÍ VSTUPU
+        
         function handleUrlInput(inputElement) {
-            const url = inputElement.value;
-            const match = url.match(/\/file\/([a-zA-Z0-9]+)/);
-            if (match && match[1]) {
-                inputElement.value = match[1];
-            }
-            
-            // Logika pro automatické rozpoznání kvality
-            const qualitySelect = inputElement.closest('.link-row').querySelector('.quality-select');
-            const lowerUrl = url.toLowerCase();
-            if (lowerUrl.includes('1080p') || lowerUrl.includes('fhd')) {
-                qualitySelect.value = '1080p';
-            } else if (lowerUrl.includes('720p') || lowerUrl.includes('hd')) {
-                qualitySelect.value = '720p';
-            } else if (lowerUrl.includes('480p') || lowerUrl.includes('sd')) {
-                qualitySelect.value = '480p';
+            clearTimeout(inputElement.dataset.debounce);
+            inputElement.dataset.debounce = setTimeout(() => {
+                const url = inputElement.value;
+                const match = url.match(/\/file\/([a-zA-Z0-9]+)/);
+                const fileIdent = match && match[1] ? match[1] : url;
+
+                inputElement.value = fileIdent;
+
+                const qualitySelect = inputElement.closest('.link-row').querySelector('.quality-select');
+                const lowerUrl = url.toLowerCase();
+                
+                if (lowerUrl.includes('1080p') || lowerUrl.includes('fhd')) {
+                    qualitySelect.value = '1080p';
+                } else if (lowerUrl.includes('720p') || lowerUrl.includes('hd')) {
+                    qualitySelect.value = '720p';
+                } else if (lowerUrl.includes('480p') || lowerUrl.includes('sd')) {
+                    qualitySelect.value = '480p';
+                } else {
+                    // Můžete nechat jako '1080p' nebo vrátit na výchozí
+                    qualitySelect.value = '1080p';
+                }
+            }, 300); // 300ms čekání po psaní
+        }
+        
+        function handleUrlInputForEpisode(inputElement, episodeId) {
+            handleUrlInput(inputElement);
+            // Automatické uložení po vložení ID
+            if (inputElement.value.trim().length > 10) {
+                saveEpisodeLinks(episodeId);
             }
         }
 
@@ -415,10 +430,14 @@
                 }
             });
         }
-
+        
         async function fetchAllItems() {
             try {
-                const [moviesRes, showsRes] = await Promise.all([fetch(apiMoviesUrl), fetch(apiShowsUrl)]);
+                // Přidání cacheBusteru pro obejití mezipaměti prohlížeče
+                const [moviesRes, showsRes] = await Promise.all([
+                    fetch(`${apiMoviesUrl}${cacheBuster}`), 
+                    fetch(`${apiShowsUrl}${cacheBuster}`)
+                ]);
                 const movies = await moviesRes.json();
                 const shows = await showsRes.json();
                 const allItems = [...movies, ...shows].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
@@ -429,7 +448,7 @@
         async function search(query) {
             if (!query || query.trim() === '') { fetchAllItems(); return; }
             try {
-                const response = await fetch(`${apiSearchUrl}?query=${encodeURIComponent(query)}`);
+                const response = await fetch(`${apiSearchUrl}?query=${encodeURIComponent(query)}${cacheBuster}`);
                 const results = await response.json();
                 displayResults(results);
             } catch (error) { console.error('Chyba při vyhledávání:', error); }
@@ -555,7 +574,7 @@
 
         async function manageShow(showId) {
             try {
-                const response = await fetch(`${apiShowsUrl}/${showId}`);
+                const response = await fetch(`${apiShowsUrl}/${showId}${cacheBuster}`);
                 if (!response.ok) throw new Error('Seriál nenalezen');
                 const show = await response.json();
 
@@ -629,16 +648,6 @@
             linksContainer.appendChild(row);
         }
         
-        // NOVÁ FUNKCE PRO ZPRACOVÁNÍ VSTUPU U EPIZOD
-        function handleUrlInputForEpisode(inputElement, episodeId) {
-            handleUrlInput(inputElement); // Použijeme hlavní logiku
-            // Přidáme automatické uložení po vložení ID
-            if (inputElement.value.trim().length > 10) { // Předpokládáme, že ID má alespoň 10 znaků
-                saveEpisodeLinks(episodeId);
-            }
-        }
-
-
         async function saveEpisodeLinks(episodeId) {
             const linksContainer = document.getElementById(`links-container-${episodeId}`);
             const links = Array.from(linksContainer.querySelectorAll('.link-row')).map(row => {
@@ -672,3 +681,4 @@
     </script>
 </body>
 </html>
+}
