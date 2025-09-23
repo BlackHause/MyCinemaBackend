@@ -271,7 +271,7 @@
 
                     <div id="links-container" class="links-container">
                         <div class="link-row">
-                            <input type="text" class="fileIdent-input" placeholder="ID z Webshare (např. vsgrvEEWju)" oninput="cleanWebshareUrl(this)">
+                            <input type="text" class="fileIdent-input" placeholder="ID z Webshare (např. vsgrvEEWju)" oninput="handleUrlInput(this)">
                             <select class="quality-select">
                                 <option value="1080p">1080p</option>
                                 <option value="720p">720p</option>
@@ -305,7 +305,6 @@
     <div id="toast"></div>
 
     <script>
-        // JS kód - víceméně se zachová, ale úpravy jsou nutné
         const mainView = document.getElementById('main-view');
         const episodeManager = document.getElementById('episode-manager');
         const itemsTableBody = document.querySelector('#items-table tbody');
@@ -330,11 +329,23 @@
         const autocompleteList = document.getElementById('autocomplete-list');
         let debounceTimer;
 
-        function cleanWebshareUrl(inputElement) {
+        // VYLEPŠENÁ FUNKCE PRO ZPRACOVÁNÍ VSTUPU
+        function handleUrlInput(inputElement) {
             const url = inputElement.value;
             const match = url.match(/\/file\/([a-zA-Z0-9]+)/);
             if (match && match[1]) {
                 inputElement.value = match[1];
+            }
+            
+            // Logika pro automatické rozpoznání kvality
+            const qualitySelect = inputElement.closest('.link-row').querySelector('.quality-select');
+            const lowerUrl = url.toLowerCase();
+            if (lowerUrl.includes('1080p') || lowerUrl.includes('fhd')) {
+                qualitySelect.value = '1080p';
+            } else if (lowerUrl.includes('720p') || lowerUrl.includes('hd')) {
+                qualitySelect.value = '720p';
+            } else if (lowerUrl.includes('480p') || lowerUrl.includes('sd')) {
+                qualitySelect.value = '480p';
             }
         }
 
@@ -430,7 +441,7 @@
             const row = document.createElement('div');
             row.className = 'link-row';
             row.innerHTML = `
-                <input type="text" class="fileIdent-input" placeholder="ID z Webshare (např. vsgrvEEWju)" value="${fileIdent}" oninput="cleanWebshareUrl(this)">
+                <input type="text" class="fileIdent-input" placeholder="ID z Webshare (např. vsgrvEEWju)" value="${fileIdent}" oninput="handleUrlInput(this)">
                 <select class="quality-select">
                     <option value="1080p" ${quality === '1080p' ? 'selected' : ''}>1080p</option>
                     <option value="720p" ${quality === '720p' ? 'selected' : ''}>720p</option>
@@ -597,7 +608,7 @@
             const row = document.createElement('div');
             row.className = 'link-row';
             row.innerHTML = `
-                <input type="text" class="fileIdent-input" placeholder="ID z Webshare (např. vsgrvEEWju)" value="${fileIdent}" oninput="cleanWebshareUrl(this)">
+                <input type="text" class="fileIdent-input" placeholder="ID z Webshare (např. vsgrvEEWju)" value="${fileIdent}" oninput="handleUrlInputForEpisode(this, ${episodeId})">
                 <select class="quality-select">
                     <option value="1080p" ${quality === '1080p' ? 'selected' : ''}>1080p</option>
                     <option value="720p" ${quality === '720p' ? 'selected' : ''}>720p</option>
@@ -617,6 +628,16 @@
             
             linksContainer.appendChild(row);
         }
+        
+        // NOVÁ FUNKCE PRO ZPRACOVÁNÍ VSTUPU U EPIZOD
+        function handleUrlInputForEpisode(inputElement, episodeId) {
+            handleUrlInput(inputElement); // Použijeme hlavní logiku
+            // Přidáme automatické uložení po vložení ID
+            if (inputElement.value.trim().length > 10) { // Předpokládáme, že ID má alespoň 10 znaků
+                saveEpisodeLinks(episodeId);
+            }
+        }
+
 
         async function saveEpisodeLinks(episodeId) {
             const linksContainer = document.getElementById(`links-container-${episodeId}`);
