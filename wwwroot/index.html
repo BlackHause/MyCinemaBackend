@@ -677,70 +677,60 @@
             }
         }
         
-        // Zcela NOVÁ FUNKCE pro správu odkazů v modálním okně
-        function showEpisodeLinkManager(episodeId) {
-            const episode = // Získání dat epizody (pro zjednodušení, načteme znovu z backendu)
-            // ... Tady byste ideálně získal data z "show" objektu, který už máte
-            // Pro teď jen ukážu jak to vytvořit
-            const links = [
-                { fileIdent: 'odkaz1', quality: '1080p' },
-                { fileIdent: 'odkaz2', quality: '720p' },
-            ];
-
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <h4>Správa odkazů pro epizodu ${episodeId}</h4>
-                    <div id="modal-links-container"></div>
-                    <button class="primary" onclick="addLinkRowForEpisode(${episodeId})">Přidat odkaz</button>
-                    <button class="save" onclick="saveEpisodeLinks(${episodeId})">Uložit a zavřít</button>
-                    <button class="secondary" onclick="closeModal()">Zavřít</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-
-            const container = document.getElementById('modal-links-container');
-            links.forEach(link => addLinkRowForEpisode(episodeId, link.fileIdent, link.quality));
-        }
-
-        // Pomocná funkce pro přidání řádku odkazu
+        // NOVÁ FUNKCE PRO PŘIDÁVÁNÍ ODKAZŮ K EPIZODÁM
         function addLinkRowForEpisode(episodeId, fileIdent = '', quality = '1080p') {
-            const container = document.getElementById('modal-links-container');
+            const linksContainer = document.getElementById(`links-container-${episodeId}`);
             const row = document.createElement('div');
             row.className = 'link-row';
             row.innerHTML = `
-                <input type="text" class="fileIdent-input" value="${fileIdent}">
+                <input type="text" class="fileIdent-input" placeholder="ID z Webshare (např. vsgrvEEWju)" value="${fileIdent}" oninput="cleanWebshareUrl(this)">
                 <select class="quality-select">
-                    <option value="1080p">1080p</option>
-                    <option value="720p">720p</option>
+                    <option value="1080p" ${quality === '1080p' ? 'selected' : ''}>1080p</option>
+                    <option value="720p" ${quality === '720p' ? 'selected' : ''}>720p</option>
+                    <option value="480p" ${quality === '480p' ? 'selected' : ''}>480p</option>
                 </select>
-                <button onclick="removeLinkRow(this)">Smazat</button>
+                <button type="button" class="delete-link-button">Smazat</button>
+                <button class="save" onclick="saveEpisodeLinks(${episodeId})">Uložit</button>
             `;
-            container.appendChild(row);
+            
+            row.querySelector('.delete-link-button').addEventListener('click', () => {
+                if (linksContainer.querySelectorAll('.link-row').length > 1) {
+                    row.remove();
+                } else {
+                    showToast('Musí být alespoň jeden odkaz.', true);
+                }
+            });
+            
+            linksContainer.appendChild(row);
         }
 
-        // A takhle by vypadala funkce pro uložení odkazů
         async function saveEpisodeLinks(episodeId) {
-            const links = [];
-            document.querySelectorAll('#modal-links-container .link-row').forEach(row => {
-                links.push({
-                    fileIdent: row.querySelector('.fileIdent-input').value,
-                    quality: row.querySelector('.quality-select').value
-                });
-            });
-            // Odešle data na backend
-            await fetch(`${apiEpisodesUrl}/${episodeId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ links: links })
-            });
-            closeModal();
-        }
+            const linksContainer = document.getElementById(`links-container-${episodeId}`);
+            const links = Array.from(linksContainer.querySelectorAll('.link-row')).map(row => {
+                const fileIdent = row.querySelector('.fileIdent-input').value.trim();
+                const quality = row.querySelector('.quality-select').value;
+                return { fileIdent, quality };
+            }).filter(link => link.fileIdent);
 
-        // Tuto funkci musíte také přidat do vašeho index.html
-        function closeModal() {
-            document.querySelector('.modal').remove();
+            if (links.length === 0) {
+                showToast('Musí být alespoň jeden odkaz!', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${apiEpisodesUrl}/${episodeId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ links: links })
+                });
+                if (!response.ok) throw new Error('Chyba při ukládání');
+                showToast('Odkazy epizody uloženy!');
+                linksContainer.style.backgroundColor = '#d4edda';
+                setTimeout(() => { linksContainer.style.backgroundColor = ''; }, 1500);
+            } catch(error) {
+                linksContainer.style.backgroundColor = '#f8d7da';
+                showToast('Chyba při ukládání odkazů.', true);
+            }
         }
 
         document.addEventListener('DOMContentLoaded', fetchAllItems);
