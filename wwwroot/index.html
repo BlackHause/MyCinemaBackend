@@ -133,13 +133,17 @@
         
         .episode-item {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            align-items: flex-start;
             gap: 10px;
             padding: 12px 0;
             border-bottom: 1px solid var(--border-color);
         }
         .episode-item:last-child { border-bottom: none; }
+        
+        .episode-item > span {
+            font-weight: bold;
+        }
         
         #toast {
             position: fixed;
@@ -342,7 +346,6 @@
     <div id="toast"></div>
 
     <script>
-        // JS kód - víceméně se zachová, ale úpravy jsou nutné
         const mainView = document.getElementById('main-view');
         const episodeManager = document.getElementById('episode-manager');
         const itemsTableBody = document.querySelector('#items-table tbody');
@@ -357,12 +360,16 @@
         const toast = document.getElementById('toast');
         const linksContainer = document.getElementById('links-container');
         const addLinkButton = document.querySelector('.add-link-button');
+        const loadingOverlay = document.getElementById('loading-overlay');
 
         const apiMoviesUrl = '/api/Movies';
         const apiShowsUrl = '/api/Shows';
         const apiEpisodesUrl = '/api/Episodes';
         const apiSearchUrl = '/api/Search';
         const apiTMDbUrl = '/api/TMDb';
+
+        function showLoading() { loadingOverlay.classList.add('visible'); }
+        function hideLoading() { loadingOverlay.classList.remove('visible'); }
 
         const autocompleteList = document.getElementById('autocomplete-list');
         let debounceTimer;
@@ -443,22 +450,34 @@
         }
 
         async function fetchAllItems() {
+            showLoading();
             try {
                 const [moviesRes, showsRes] = await Promise.all([fetch(apiMoviesUrl), fetch(apiShowsUrl)]);
                 const movies = await moviesRes.json();
                 const shows = await showsRes.json();
                 const allItems = [...movies, ...shows].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
                 displayResults(allItems);
-            } catch (error) { console.error('Chyba při načítání:', error); }
+            } catch (error) { 
+                console.error('Chyba při načítání:', error); 
+                showToast('Chyba při načítání dat z databáze.', true);
+            } finally {
+                hideLoading();
+            }
         }
 
         async function search(query) {
             if (!query || query.trim() === '') { fetchAllItems(); return; }
+            showLoading();
             try {
                 const response = await fetch(`${apiSearchUrl}?query=${encodeURIComponent(query)}`);
                 const results = await response.json();
                 displayResults(results);
-            } catch (error) { console.error('Chyba při vyhledávání:', error); }
+            } catch (error) { 
+                console.error('Chyba při vyhledávání:', error); 
+                showToast('Chyba při vyhledávání dat.', true);
+            } finally {
+                hideLoading();
+            }
         }
         searchBox.addEventListener('input', () => search(searchBox.value));
 
@@ -524,6 +543,7 @@
 
         addItemForm.addEventListener('submit', async (event) => {
             event.preventDefault();
+            showLoading();
             const id = itemIdInput.value;
             const isUpdating = !!id;
             
@@ -536,6 +556,7 @@
 
             if (links.length === 0) {
                 showToast('Musí být alespoň jeden odkaz!', true);
+                hideLoading();
                 return;
             }
 
@@ -551,10 +572,16 @@
                 showToast(isUpdating ? 'Odkazy filmu úspěšně upraveny!' : 'Film úspěšně přidán!');
                 cancelEdit();
                 search(searchBox.value || '');
-            } catch (error) { showToast('Chyba při ukládání filmu.', true); }
+            } catch (error) { 
+                showToast('Chyba při ukládání filmu.', true); 
+                console.error(error);
+            } finally {
+                hideLoading();
+            }
         });
 
         addShowButton.addEventListener('click', async () => {
+            showLoading();
             const showData = { title: titleInput.value };
             try {
                 const response = await fetch(apiShowsUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(showData) });
@@ -562,15 +589,29 @@
                 showToast('Seriál úspěšně přidán!');
                 addItemForm.reset();
                 search(searchBox.value || '');
-            } catch (error) { showToast('Chyba při přidávání seriálu.', true); }
+            } catch (error) { 
+                showToast('Chyba při přidávání seriálu.', true); 
+                console.error(error);
+            } finally {
+                hideLoading();
+            }
         });
 
         async function deleteItem(id, isMovie) {
             const url = isMovie ? `${apiMoviesUrl}/${id}` : `${apiShowsUrl}/${id}`;
             const itemType = isMovie ? 'Film' : 'Seriál';
             if (confirm(`Opravdu smazat: ${itemType.toLowerCase()}?`)) {
-                await fetch(url, { method: 'DELETE' });
-                fetchAllItems();
+                showLoading();
+                try {
+                    await fetch(url, { method: 'DELETE' });
+                    showToast(`${itemType} smazán.`, false);
+                    fetchAllItems();
+                } catch (error) {
+                    showToast(`Chyba při mazání ${itemType.toLowerCase()}.`, true);
+                    console.error(error);
+                } finally {
+                    hideLoading();
+                }
             }
         }
 
@@ -578,8 +619,9 @@
             episodeManager.style.display = 'none';
             mainView.style.display = 'block';
         }
-
+        
         async function manageShow(showId) {
+            showLoading();
             try {
                 const response = await fetch(`${apiShowsUrl}/${showId}`);
                 if (!response.ok) throw new Error('Seriál nenalezen');
@@ -588,12 +630,14 @@
                 document.getElementById('show-title-header').textContent = `Epizody pro: ${show.title}`;
                 const seasonsContainer = document.getElementById('seasons-container');
                 seasonsContainer.innerHTML = '';
-
+                
                 show.seasons.sort((a,b) => a.seasonNumber - b.seasonNumber).forEach(season => {
-                    if(season.seasonNumber === 0) return;
+                    if (!season.episodes || season.episodes.length === 0) return;
+
                     const seasonBlock = document.createElement('div');
                     seasonBlock.className = 'season-block';
                     seasonBlock.innerHTML = `<h3>Série ${season.seasonNumber}</h3>`;
+
                     season.episodes.sort((a,b) => a.episodeNumber - b.episodeNumber).forEach(episode => {
                         const episodeItem = document.createElement('div');
                         episodeItem.className = 'episode-item';
@@ -625,63 +669,78 @@
 
                 mainView.style.display = 'none';
                 episodeManager.style.display = 'block';
-            } catch (error) { showToast('Nepodařilo se načíst detaily seriálu.', true); }
+            } catch (error) { 
+                showToast('Nepodařilo se načíst detaily seriálu.', true);
+                console.error(error);
+            } finally {
+                hideLoading();
+            }
         }
         
-        // NOVÁ FUNKCE PRO PŘIDÁVÁNÍ ODKAZŮ K EPIZODÁM
+        // Zcela NOVÁ FUNKCE pro správu odkazů v modálním okně
+        function showEpisodeLinkManager(episodeId) {
+            const episode = // Získání dat epizody (pro zjednodušení, načteme znovu z backendu)
+            // ... Tady byste ideálně získal data z "show" objektu, který už máte
+            // Pro teď jen ukážu jak to vytvořit
+            const links = [
+                { fileIdent: 'odkaz1', quality: '1080p' },
+                { fileIdent: 'odkaz2', quality: '720p' },
+            ];
+
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <h4>Správa odkazů pro epizodu ${episodeId}</h4>
+                    <div id="modal-links-container"></div>
+                    <button class="primary" onclick="addLinkRowForEpisode(${episodeId})">Přidat odkaz</button>
+                    <button class="save" onclick="saveEpisodeLinks(${episodeId})">Uložit a zavřít</button>
+                    <button class="secondary" onclick="closeModal()">Zavřít</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            const container = document.getElementById('modal-links-container');
+            links.forEach(link => addLinkRowForEpisode(episodeId, link.fileIdent, link.quality));
+        }
+
+        // Pomocná funkce pro přidání řádku odkazu
         function addLinkRowForEpisode(episodeId, fileIdent = '', quality = '1080p') {
-            const linksContainer = document.getElementById(`links-container-${episodeId}`);
+            const container = document.getElementById('modal-links-container');
             const row = document.createElement('div');
             row.className = 'link-row';
             row.innerHTML = `
-                <input type="text" class="fileIdent-input" placeholder="ID z Webshare (např. vsgrvEEWju)" value="${fileIdent}" oninput="cleanWebshareUrl(this)">
+                <input type="text" class="fileIdent-input" value="${fileIdent}">
                 <select class="quality-select">
-                    <option value="1080p" ${quality === '1080p' ? 'selected' : ''}>1080p</option>
-                    <option value="720p" ${quality === '720p' ? 'selected' : ''}>720p</option>
-                    <option value="480p" ${quality === '480p' ? 'selected' : ''}>480p</option>
+                    <option value="1080p">1080p</option>
+                    <option value="720p">720p</option>
                 </select>
-                <button type="button" class="delete-link-button">Smazat</button>
-                <button class="save" onclick="saveEpisodeLinks(${episodeId})">Uložit</button>
+                <button onclick="removeLinkRow(this)">Smazat</button>
             `;
-            
-            row.querySelector('.delete-link-button').addEventListener('click', () => {
-                if (linksContainer.querySelectorAll('.link-row').length > 1) {
-                    row.remove();
-                } else {
-                    showToast('Musí být alespoň jeden odkaz.', true);
-                }
-            });
-            
-            linksContainer.appendChild(row);
+            container.appendChild(row);
         }
 
+        // A takhle by vypadala funkce pro uložení odkazů
         async function saveEpisodeLinks(episodeId) {
-            const linksContainer = document.getElementById(`links-container-${episodeId}`);
-            const links = Array.from(linksContainer.querySelectorAll('.link-row')).map(row => {
-                const fileIdent = row.querySelector('.fileIdent-input').value.trim();
-                const quality = row.querySelector('.quality-select').value;
-                return { fileIdent, quality };
-            }).filter(link => link.fileIdent);
-
-            if (links.length === 0) {
-                showToast('Musí být alespoň jeden odkaz!', true);
-                return;
-            }
-
-            try {
-                const response = await fetch(`${apiEpisodesUrl}/${episodeId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ links: links })
+            const links = [];
+            document.querySelectorAll('#modal-links-container .link-row').forEach(row => {
+                links.push({
+                    fileIdent: row.querySelector('.fileIdent-input').value,
+                    quality: row.querySelector('.quality-select').value
                 });
-                if (!response.ok) throw new Error('Chyba při ukládání');
-                showToast('Odkazy epizody uloženy!');
-                linksContainer.style.backgroundColor = '#d4edda';
-                setTimeout(() => { linksContainer.style.backgroundColor = ''; }, 1500);
-            } catch(error) {
-                linksContainer.style.backgroundColor = '#f8d7da';
-                showToast('Chyba při ukládání odkazů.', true);
-            }
+            });
+            // Odešle data na backend
+            await fetch(`${apiEpisodesUrl}/${episodeId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ links: links })
+            });
+            closeModal();
+        }
+
+        // Tuto funkci musíte také přidat do vašeho index.html
+        function closeModal() {
+            document.querySelector('.modal').remove();
         }
 
         document.addEventListener('DOMContentLoaded', fetchAllItems);
