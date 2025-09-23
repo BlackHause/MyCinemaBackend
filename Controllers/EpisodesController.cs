@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using KodiBackend.Data;
 using KodiBackend.Models;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace KodiBackend.Controllers
 {
