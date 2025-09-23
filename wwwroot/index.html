@@ -631,41 +631,45 @@
                 const seasonsContainer = document.getElementById('seasons-container');
                 seasonsContainer.innerHTML = '';
                 
-                show.seasons.sort((a,b) => a.seasonNumber - b.seasonNumber).forEach(season => {
-                    if (!season.episodes || season.episodes.length === 0) return;
+                if (show.seasons && show.seasons.length > 0) {
+                    show.seasons.sort((a, b) => a.seasonNumber - b.seasonNumber).forEach(season => {
+                        if (!season.episodes || season.episodes.length === 0) return;
 
-                    const seasonBlock = document.createElement('div');
-                    seasonBlock.className = 'season-block';
-                    seasonBlock.innerHTML = `<h3>Série ${season.seasonNumber}</h3>`;
+                        const seasonBlock = document.createElement('div');
+                        seasonBlock.className = 'season-block';
+                        seasonBlock.innerHTML = `<h3>Série ${season.seasonNumber}</h3>`;
 
-                    season.episodes.sort((a,b) => a.episodeNumber - b.episodeNumber).forEach(episode => {
-                        const episodeItem = document.createElement('div');
-                        episodeItem.className = 'episode-item';
-                        episodeItem.innerHTML = `<span>E${String(episode.episodeNumber).padStart(2, '0')}: ${episode.title}</span>`;
-                        
-                        const linksSubContainer = document.createElement('div');
-                        linksSubContainer.className = 'links-container';
-                        linksSubContainer.id = `links-container-${episode.id}`;
+                        season.episodes.sort((a, b) => a.episodeNumber - b.episodeNumber).forEach(episode => {
+                            const episodeItem = document.createElement('div');
+                            episodeItem.className = 'episode-item';
+                            episodeItem.innerHTML = `<span>E${String(episode.episodeNumber).padStart(2, '0')}: ${episode.title}</span>`;
+                            
+                            const linksSubContainer = document.createElement('div');
+                            linksSubContainer.className = 'links-container';
+                            linksSubContainer.id = `links-container-${episode.id}`;
 
-                        const addLinkBtn = document.createElement('button');
-                        addLinkBtn.type = 'button';
-                        addLinkBtn.className = 'primary add-link-button';
-                        addLinkBtn.textContent = 'Přidat odkaz';
-                        addLinkBtn.addEventListener('click', () => addLinkRowForEpisode(episode.id));
+                            const addLinkBtn = document.createElement('button');
+                            addLinkBtn.type = 'button';
+                            addLinkBtn.className = 'primary add-link-button';
+                            addLinkBtn.textContent = 'Přidat odkaz';
+                            addLinkBtn.addEventListener('click', () => addLinkRowForEpisode(episode.id));
 
-                        if (episode.links && episode.links.length > 0) {
-                             episode.links.forEach(link => addLinkRowForEpisode(episode.id, link.fileIdent, link.quality));
-                        } else {
-                            addLinkRowForEpisode(episode.id);
-                        }
-                        
-                        episodeItem.appendChild(linksSubContainer);
-                        episodeItem.appendChild(addLinkBtn);
-                        
-                        seasonBlock.appendChild(episodeItem);
+                            if (episode.links && episode.links.length > 0) {
+                                episode.links.forEach(link => addLinkRowForEpisode(episode.id, link.fileIdent, link.quality));
+                            } else {
+                                addLinkRowForEpisode(episode.id); // Přidá prázdný řádek pro nový odkaz
+                            }
+                            
+                            episodeItem.appendChild(linksSubContainer);
+                            episodeItem.appendChild(addLinkBtn);
+                            
+                            seasonBlock.appendChild(episodeItem);
+                        });
+                        seasonsContainer.appendChild(seasonBlock);
                     });
-                    seasonsContainer.appendChild(seasonBlock);
-                });
+                } else {
+                    seasonsContainer.innerHTML = `<p>Žádné sezóny nebyly nalezeny.</p>`;
+                }
 
                 mainView.style.display = 'none';
                 episodeManager.style.display = 'block';
@@ -677,13 +681,17 @@
             }
         }
         
-        // NOVÁ FUNKCE PRO PŘIDÁVÁNÍ ODKAZŮ K EPIZODÁM
         function addLinkRowForEpisode(episodeId, fileIdent = '', quality = '1080p') {
             const linksContainer = document.getElementById(`links-container-${episodeId}`);
+            if (!linksContainer) {
+                console.error(`Kontejner pro odkazy pro epizodu ${episodeId} nebyl nalezen.`);
+                return;
+            }
+
             const row = document.createElement('div');
             row.className = 'link-row';
             row.innerHTML = `
-                <input type="text" class="fileIdent-input" placeholder="ID z Webshare (např. vsgrvEEWju)" value="${fileIdent}" oninput="cleanWebshareUrl(this)">
+                <input type="text" class="fileIdent-input" placeholder="ID z Webshare" value="${fileIdent}" oninput="cleanWebshareUrl(this)">
                 <select class="quality-select">
                     <option value="1080p" ${quality === '1080p' ? 'selected' : ''}>1080p</option>
                     <option value="720p" ${quality === '720p' ? 'selected' : ''}>720p</option>
@@ -706,6 +714,11 @@
 
         async function saveEpisodeLinks(episodeId) {
             const linksContainer = document.getElementById(`links-container-${episodeId}`);
+            if (!linksContainer) {
+                showToast('Chyba: Kontejner pro odkazy nebyl nalezen.', true);
+                return;
+            }
+
             const links = Array.from(linksContainer.querySelectorAll('.link-row')).map(row => {
                 const fileIdent = row.querySelector('.fileIdent-input').value.trim();
                 const quality = row.querySelector('.quality-select').value;
@@ -717,6 +730,7 @@
                 return;
             }
 
+            showLoading();
             try {
                 const response = await fetch(`${apiEpisodesUrl}/${episodeId}`, {
                     method: 'PUT',
@@ -730,6 +744,8 @@
             } catch(error) {
                 linksContainer.style.backgroundColor = '#f8d7da';
                 showToast('Chyba při ukládání odkazů.', true);
+            } finally {
+                hideLoading();
             }
         }
 
