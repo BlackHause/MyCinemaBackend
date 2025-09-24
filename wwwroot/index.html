@@ -126,29 +126,104 @@
         
         .season-block {
             margin-top: 25px;
-            padding: 15px;
             background-color: var(--light-bg);
             border-radius: 6px;
         }
         
-        .episode-item {
+        .season-header {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #0056b3;
+            padding: 15px;
+            background-color: #e9f5ff;
+            border: 1px solid var(--primary-color);
+            border-radius: 6px;
+            cursor: pointer;
             display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .season-header:hover {
+            background-color: #d4eaf9;
+        }
+        
+        .season-header-toggle {
+            font-size: 1.5em;
+            line-height: 1;
+        }
+
+        .episode-list {
+            display: none; /* Skryté ve výchozím stavu */
             flex-direction: column;
-            align-items: flex-start;
-            gap: 10px;
+            gap: 15px;
             padding: 15px;
             border: 1px solid var(--border-color);
             border-radius: 6px;
-            margin-bottom: 15px;
-            background-color: #fff;
+            background-color: var(--light-bg);
+            margin-top: -10px; /* Překrytí okraje */
         }
         
-        .episode-item > span {
-            font-weight: bold;
+        .episode-list.active {
+            display: flex; /* Zobrazené po kliknutí */
+        }
+        
+        /* --- ZMENŠENÉ STYLY PRO ODKAZY --- */
+        .episode-item {
+            background: none;
+            padding: 0;
+            border: none;
+            box-shadow: none;
+        }
+
+        .episode-header-text {
             font-size: 1.1em;
-            color: #0056b3;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .link-row {
+            gap: 5px; /* Menší mezery */
+        }
+
+        .link-row input[type="text"] {
+            padding: 8px; /* Menší padding */
+            font-size: 14px; /* Menší font */
         }
         
+        .link-row select {
+            width: 70px; /* Ještě menší šířka */
+            padding: 8px 5px; /* Menší padding */
+            font-size: 14px;
+        }
+        
+        .link-row button {
+            padding: 8px 10px; /* Menší padding tlačítek */
+        }
+
+        .episode-links-container {
+            display: flex;
+            flex-direction: column;
+            gap: 5px; /* Menší mezery mezi odkazy */
+        }
+        
+        .episode-item button {
+            padding: 8px 10px;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+        
+        .season-actions {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        .season-actions button {
+            width: auto;
+        }
+
         #toast {
             position: fixed;
             bottom: 20px;
@@ -208,35 +283,6 @@
             margin-left: 10px;
         }
         
-        .link-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .link-row:last-child {
-            margin-bottom: 0;
-        }
-        
-        .link-row input[type="text"] {
-            flex-grow: 1;
-            margin-bottom: 0;
-        }
-        
-        .link-row select {
-            flex-shrink: 0;
-            width: 80px;
-            margin-bottom: 0;
-            padding: 12px 8px;
-        }
-        
-        .link-row button {
-            flex-shrink: 0;
-            margin-left: 0;
-        }
-        
         .add-link-button {
             margin-top: 10px;
         }
@@ -284,84 +330,6 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-        }
-        
-        /* --- NOVE A UPRAVENE STYLY PRO EPIZODY --- */
-        .season-header {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #0056b3;
-            padding: 15px;
-            background-color: #e9f5ff;
-            border: 1px solid var(--primary-color);
-            border-radius: 6px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        
-        .season-header:hover {
-            background-color: #d4eaf9;
-        }
-        
-        .season-header-toggle {
-            font-size: 1.5em;
-            line-height: 1;
-        }
-
-        .episode-list {
-            display: none; /* Skryté ve výchozím stavu */
-            flex-direction: column;
-            gap: 15px;
-            padding: 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            background-color: var(--light-bg);
-            margin-top: -10px; /* Překrytí okraje */
-        }
-        
-        .episode-list.active {
-            display: flex; /* Zobrazené po kliknutí */
-        }
-
-        .episode-item {
-            background: #fff;
-            padding: 15px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .episode-header-text {
-            font-size: 1.1em;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        .episode-links-container {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .link-row input[type="text"], .link-row select {
-            margin-bottom: 0;
-        }
-
-        .link-row button.delete-link-button {
-            margin-left: auto;
-        }
-        
-        .season-actions {
-            margin-top: 20px;
-            text-align: right;
-        }
-
-        .season-actions button {
-            width: auto;
         }
     </style>
 </head>
