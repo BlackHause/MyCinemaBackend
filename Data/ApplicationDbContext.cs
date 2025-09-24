@@ -15,6 +15,7 @@ namespace KodiBackend.Data
         public DbSet<Season> Seasons { get; set; }
         public DbSet<Episode> Episodes { get; set; }
         public DbSet<WebshareLink> WebshareLinks { get; set; }
+        public DbSet<HistoryEntry> HistoryEntries { get; set; } // Nová tabulka pro historii
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

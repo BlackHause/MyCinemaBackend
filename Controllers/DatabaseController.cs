@@ -155,5 +155,100 @@ namespace KodiBackend.Controllers
             
             return Ok(new { message = $"Aktualizace dokončena. Upraveno {moviesUpdated} filmů a {showsUpdated} seriálů." });
         }
+
+        // === Nové akce pro historii sledování ===
+
+        [HttpPost("history")]
+        public async Task<IActionResult> AddToHistory([FromBody] HistoryEntryDto entryDto)
+        {
+            if (entryDto == null || string.IsNullOrEmpty(entryDto.MediaType))
+            {
+                return BadRequest("Neplatná data pro záznam historie.");
+            }
+
+            // Kontrola, zda médium existuje
+            if (entryDto.MediaType == "Movie")
+            {
+                if (!await _context.Movies.AnyAsync(m => m.Id == entryDto.MediaId))
+                {
+                    return NotFound($"Film s ID {entryDto.MediaId} nebyl nalezen.");
+                }
+            }
+            else if (entryDto.MediaType == "Show")
+            {
+                if (!await _context.Shows.AnyAsync(s => s.Id == entryDto.MediaId))
+                {
+                    return NotFound($"Seriál s ID {entryDto.MediaId} nebyl nalezen.");
+                }
+            }
+            else
+            {
+                return BadRequest("Neplatný typ média. Podporovány jsou pouze 'Movie' a 'Show'.");
+            }
+            
+            var entry = new HistoryEntry
+            {
+                MediaId = entryDto.MediaId,
+                MediaType = entryDto.MediaType,
+                WatchedAt = DateTime.UtcNow
+            };
+            
+            _context.HistoryEntries.Add(entry);
+            await _context.SaveChangesAsync();
+            
+            return Ok();
+        }
+
+        [HttpGet("history/movies")]
+        public async Task<ActionResult<IEnumerable<Movie>>> GetWatchedMovies()
+        {
+            var watchedMoviesIds = await _context.HistoryEntries
+                .Where(h => h.MediaType == "Movie")
+                .OrderByDescending(h => h.WatchedAt)
+                .Select(h => h.MediaId)
+                .Take(20) // Omezíme na posledních 20 filmů
+                .ToListAsync();
+
+            var movies = await _context.Movies
+                .Where(m => watchedMoviesIds.Contains(m.Id))
+                .Include(m => m.Links)
+                .ToListAsync();
+
+            // Udržení pořadí podle historie
+            var orderedMovies = watchedMoviesIds
+                .Join(movies, id => id, movie => movie.Id, (id, movie) => movie)
+                .ToList();
+                
+            return Ok(orderedMovies);
+        }
+
+        [HttpGet("history/shows")]
+        public async Task<ActionResult<IEnumerable<Show>>> GetWatchedShows()
+        {
+            var watchedShowsIds = await _context.HistoryEntries
+                .Where(h => h.MediaType == "Show")
+                .OrderByDescending(h => h.WatchedAt)
+                .Select(h => h.MediaId)
+                .Take(20) // Omezíme na posledních 20 seriálů
+                .ToListAsync();
+
+            var shows = await _context.Shows
+                .Where(s => watchedShowsIds.Contains(s.Id))
+                .Include(s => s.Seasons).ThenInclude(s => s.Episodes).ThenInclude(e => e.Links)
+                .ToListAsync();
+            
+            // Udržení pořadí podle historie
+            var orderedShows = watchedShowsIds
+                .Join(shows, id => id, show => show.Id, (id, show) => show)
+                .ToList();
+
+            return Ok(orderedShows);
+        }
+    }
+
+    public class HistoryEntryDto
+    {
+        public int MediaId { get; set; }
+        public string? MediaType { get; set; }
     }
 }
