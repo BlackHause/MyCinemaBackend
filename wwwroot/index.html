@@ -227,9 +227,9 @@
         
         .link-row select {
             flex-shrink: 0;
-            width: 80px; /* ZMENŠENÁ ŠÍŘKA PRO SEZNAM KVALITY */
+            width: 80px;
             margin-bottom: 0;
-            padding: 12px 8px; /* ZMENŠENÝ PADDING PRO KOMPAKTNĚJŠÍ VZHLED */
+            padding: 12px 8px;
         }
         
         .link-row button {
@@ -287,10 +287,43 @@
         }
         
         /* --- NOVE A UPRAVENE STYLY PRO EPIZODY --- */
-        .episode-list {
+        .season-header {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #0056b3;
+            padding: 15px;
+            background-color: #e9f5ff;
+            border: 1px solid var(--primary-color);
+            border-radius: 6px;
+            cursor: pointer;
             display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .season-header:hover {
+            background-color: #d4eaf9;
+        }
+        
+        .season-header-toggle {
+            font-size: 1.5em;
+            line-height: 1;
+        }
+
+        .episode-list {
+            display: none; /* Skryté ve výchozím stavu */
             flex-direction: column;
             gap: 15px;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background-color: var(--light-bg);
+            margin-top: -10px; /* Překrytí okraje */
+        }
+        
+        .episode-list.active {
+            display: flex; /* Zobrazené po kliknutí */
         }
 
         .episode-item {
@@ -301,7 +334,7 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        .episode-header {
+        .episode-header-text {
             font-size: 1.1em;
             font-weight: bold;
             color: #333;
@@ -673,12 +706,25 @@
                     show.seasons.sort((a, b) => a.seasonNumber - b.seasonNumber).forEach(season => {
                         const seasonBlock = document.createElement('div');
                         seasonBlock.className = 'season-block';
-                        seasonBlock.dataset.seasonId = season.id;
                         
-                        seasonBlock.innerHTML = `<h3>Série ${season.seasonNumber}</h3>`;
-                        
+                        const seasonHeader = document.createElement('div');
+                        seasonHeader.className = 'season-header';
+                        seasonHeader.innerHTML = `<span>Série ${season.seasonNumber}</span><span class="season-header-toggle">+</span>`;
+                        seasonHeader.addEventListener('click', () => {
+                            const episodeList = seasonBlock.querySelector('.episode-list');
+                            const toggleSpan = seasonHeader.querySelector('.season-header-toggle');
+                            if (episodeList.classList.contains('active')) {
+                                episodeList.classList.remove('active');
+                                toggleSpan.textContent = '+';
+                            } else {
+                                episodeList.classList.add('active');
+                                toggleSpan.textContent = '-';
+                            }
+                        });
+
                         const episodeList = document.createElement('div');
                         episodeList.className = 'episode-list';
+                        episodeList.dataset.seasonId = season.id;
                         
                         if (season.episodes && season.episodes.length > 0) {
                             season.episodes.sort((a, b) => a.episodeNumber - b.episodeNumber).forEach(episode => {
@@ -687,7 +733,7 @@
                                 episodeItem.dataset.episodeId = episode.id;
                                 
                                 episodeItem.innerHTML = `
-                                    <div class="episode-header">E${String(episode.episodeNumber).padStart(2, '0')}: ${episode.title}</div>
+                                    <div class="episode-header-text">E${String(episode.episodeNumber).padStart(2, '0')}: ${episode.title}</div>
                                     <div class="episode-links-container"></div>
                                 `;
                                 
@@ -712,8 +758,6 @@
                             episodeList.innerHTML = `<p>V této sérii nejsou žádné epizody.</p>`;
                         }
                         
-                        seasonBlock.appendChild(episodeList);
-                        
                         const saveSeasonBtnContainer = document.createElement('div');
                         saveSeasonBtnContainer.className = 'season-actions';
                         
@@ -724,6 +768,9 @@
                         saveSeasonBtn.addEventListener('click', () => saveSeasonLinks(season.id));
                         
                         saveSeasonBtnContainer.appendChild(saveSeasonBtn);
+                        
+                        seasonBlock.appendChild(seasonHeader);
+                        seasonBlock.appendChild(episodeList);
                         seasonBlock.appendChild(saveSeasonBtnContainer);
 
                         seasonsContainer.appendChild(seasonBlock);
@@ -767,12 +814,14 @@
         }
 
         async function saveSeasonLinks(seasonId) {
-            const seasonBlock = document.querySelector(`.season-block[data-season-id="${seasonId}"]`);
-            if (!seasonBlock) return;
+            const seasonBlock = document.querySelector(`.episode-list[data-season-id="${seasonId}"]`);
+            if (!seasonBlock) {
+                 showToast('Chyba: Kontejner pro sérii nebyl nalezen.', true);
+                 return;
+            }
 
             const episodes = Array.from(seasonBlock.querySelectorAll('.episode-item'));
-            const updates = [];
-            let hasChanges = false;
+            let updates = [];
             
             episodes.forEach(episodeItem => {
                 const episodeId = episodeItem.dataset.episodeId;
@@ -783,13 +832,10 @@
                     return { fileIdent, quality };
                 }).filter(link => link.fileIdent);
 
-                // Assuming you have a way to check for existing links for a change detection, or you just send all links for each episode.
-                // For now, let's just create an update object for each episode.
                 updates.push({ episodeId, links });
-                hasChanges = true; // For simplicity, assume there's always a change when saving.
             });
             
-            if (!hasChanges) {
+            if (updates.length === 0) {
                 showToast('Žádné změny k uložení.');
                 return;
             }
@@ -797,8 +843,6 @@
             showLoading();
             
             try {
-                // Here you would typically make a series of API calls or a single batch API call.
-                // For simplicity, let's just iterate and make a PUT request for each episode with updated links.
                 for (const update of updates) {
                     await fetch(`${apiEpisodesUrl}/${update.episodeId}`, {
                         method: 'PUT',
@@ -808,10 +852,10 @@
                 }
                 
                 showToast('Celá série byla úspěšně uložena!');
-                seasonBlock.style.backgroundColor = '#d4edda';
-                setTimeout(() => { seasonBlock.style.backgroundColor = ''; }, 1500);
+                seasonBlock.parentNode.style.backgroundColor = '#d4edda';
+                setTimeout(() => { seasonBlock.parentNode.style.backgroundColor = ''; }, 1500);
             } catch(error) {
-                seasonBlock.style.backgroundColor = '#f8d7da';
+                seasonBlock.parentNode.style.backgroundColor = '#f8d7da';
                 showToast('Chyba při ukládání série.', true);
                 console.error(error);
             } finally {
