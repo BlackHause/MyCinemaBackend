@@ -208,14 +208,6 @@
             margin-left: 10px;
         }
         
-        .links-container {
-            margin-top: 15px;
-            border: 1px solid var(--border-color);
-            padding: 15px;
-            border-radius: 6px;
-            background-color: var(--light-bg);
-        }
-        
         .link-row {
             display: flex;
             flex-wrap: wrap;
@@ -291,6 +283,52 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        /* --- NOVE A UPRAVENE STYLY PRO EPIZODY --- */
+        .episode-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .episode-item {
+            background: #fff;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .episode-header {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .episode-links-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .link-row input[type="text"], .link-row select {
+            margin-bottom: 0;
+        }
+
+        .link-row button.delete-link-button {
+            margin-left: auto;
+        }
+        
+        .season-actions {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        .season-actions button {
+            width: auto;
+        }
+
     </style>
 </head>
 <body>
@@ -632,50 +670,61 @@
                 
                 if (show.seasons && show.seasons.length > 0) {
                     show.seasons.sort((a, b) => a.seasonNumber - b.seasonNumber).forEach(season => {
-                        if (!season.episodes || season.episodes.length === 0) return;
-
                         const seasonBlock = document.createElement('div');
                         seasonBlock.className = 'season-block';
+                        seasonBlock.dataset.seasonId = season.id;
+                        
                         seasonBlock.innerHTML = `<h3>Série ${season.seasonNumber}</h3>`;
+                        
+                        const episodeList = document.createElement('div');
+                        episodeList.className = 'episode-list';
+                        
+                        if (season.episodes && season.episodes.length > 0) {
+                            season.episodes.sort((a, b) => a.episodeNumber - b.episodeNumber).forEach(episode => {
+                                const episodeItem = document.createElement('div');
+                                episodeItem.className = 'episode-item';
+                                episodeItem.dataset.episodeId = episode.id;
+                                
+                                episodeItem.innerHTML = `
+                                    <div class="episode-header">E${String(episode.episodeNumber).padStart(2, '0')}: ${episode.title}</div>
+                                    <div class="episode-links-container"></div>
+                                `;
+                                
+                                const linksSubContainer = episodeItem.querySelector('.episode-links-container');
+                                if (episode.links && episode.links.length > 0) {
+                                    episode.links.forEach(link => addLinkRowForEpisode(linksSubContainer, link.fileIdent, link.quality));
+                                } else {
+                                    addLinkRowForEpisode(linksSubContainer);
+                                }
+                                
+                                const addLinkBtn = document.createElement('button');
+                                addLinkBtn.type = 'button';
+                                addLinkBtn.className = 'primary';
+                                addLinkBtn.textContent = 'Přidat odkaz';
+                                addLinkBtn.style.marginTop = '10px';
+                                addLinkBtn.addEventListener('click', () => addLinkRowForEpisode(linksSubContainer));
+                                
+                                episodeItem.appendChild(addLinkBtn);
+                                episodeList.appendChild(episodeItem);
+                            });
+                        } else {
+                            episodeList.innerHTML = `<p>V této sérii nejsou žádné epizody.</p>`;
+                        }
+                        
+                        seasonBlock.appendChild(episodeList);
+                        
+                        const saveSeasonBtnContainer = document.createElement('div');
+                        saveSeasonBtnContainer.className = 'season-actions';
+                        
+                        const saveSeasonBtn = document.createElement('button');
+                        saveSeasonBtn.type = 'button';
+                        saveSeasonBtn.className = 'save';
+                        saveSeasonBtn.textContent = 'Uložit sérii';
+                        saveSeasonBtn.addEventListener('click', () => saveSeasonLinks(season.id));
+                        
+                        saveSeasonBtnContainer.appendChild(saveSeasonBtn);
+                        seasonBlock.appendChild(saveSeasonBtnContainer);
 
-                        season.episodes.sort((a, b) => a.episodeNumber - b.episodeNumber).forEach(episode => {
-                            const episodeItem = document.createElement('div');
-                            episodeItem.className = 'episode-item';
-                            episodeItem.innerHTML = `<span>E${String(episode.episodeNumber).padStart(2, '0')}: ${episode.title}</span>`;
-                            
-                            const linksSubContainer = document.createElement('div');
-                            linksSubContainer.className = 'links-container';
-                            linksSubContainer.id = `links-container-${episode.id}`;
-
-                            if (episode.links && episode.links.length > 0) {
-                                episode.links.forEach(link => addLinkRowForEpisode(linksSubContainer, link.fileIdent, link.quality));
-                            } else {
-                                addLinkRowForEpisode(linksSubContainer);
-                            }
-                            
-                            const actionsContainer = document.createElement('div');
-                            actionsContainer.style.marginTop = '15px';
-                            
-                            const addLinkBtn = document.createElement('button');
-                            addLinkBtn.type = 'button';
-                            addLinkBtn.className = 'primary add-link-button';
-                            addLinkBtn.textContent = 'Přidat odkaz';
-                            addLinkBtn.addEventListener('click', () => addLinkRowForEpisode(linksSubContainer));
-
-                            const saveBtn = document.createElement('button');
-                            saveBtn.type = 'button';
-                            saveBtn.className = 'save';
-                            saveBtn.textContent = 'Uložit';
-                            saveBtn.addEventListener('click', () => saveEpisodeLinks(episode.id));
-
-                            actionsContainer.appendChild(addLinkBtn);
-                            actionsContainer.appendChild(saveBtn);
-                            
-                            episodeItem.appendChild(linksSubContainer);
-                            episodeItem.appendChild(actionsContainer);
-                            
-                            seasonBlock.appendChild(episodeItem);
-                        });
                         seasonsContainer.appendChild(seasonBlock);
                     });
                 } else {
@@ -716,38 +765,54 @@
             linksContainer.appendChild(row);
         }
 
-        async function saveEpisodeLinks(episodeId) {
-            const linksContainer = document.getElementById(`links-container-${episodeId}`);
-            if (!linksContainer) {
-                showToast('Chyba: Kontejner pro odkazy nebyl nalezen.', true);
-                return;
-            }
+        async function saveSeasonLinks(seasonId) {
+            const seasonBlock = document.querySelector(`.season-block[data-season-id="${seasonId}"]`);
+            if (!seasonBlock) return;
 
-            const links = Array.from(linksContainer.querySelectorAll('.link-row')).map(row => {
-                const fileIdent = row.querySelector('.fileIdent-input').value.trim();
-                const quality = row.querySelector('.quality-select').value;
-                return { fileIdent, quality };
-            }).filter(link => link.fileIdent);
+            const episodes = Array.from(seasonBlock.querySelectorAll('.episode-item'));
+            const updates = [];
+            let hasChanges = false;
+            
+            episodes.forEach(episodeItem => {
+                const episodeId = episodeItem.dataset.episodeId;
+                const linksContainer = episodeItem.querySelector('.episode-links-container');
+                const links = Array.from(linksContainer.querySelectorAll('.link-row')).map(row => {
+                    const fileIdent = row.querySelector('.fileIdent-input').value.trim();
+                    const quality = row.querySelector('.quality-select').value;
+                    return { fileIdent, quality };
+                }).filter(link => link.fileIdent);
 
-            if (links.length === 0) {
-                showToast('Musí být alespoň jeden odkaz!', true);
+                // Assuming you have a way to check for existing links for a change detection, or you just send all links for each episode.
+                // For now, let's just create an update object for each episode.
+                updates.push({ episodeId, links });
+                hasChanges = true; // For simplicity, assume there's always a change when saving.
+            });
+            
+            if (!hasChanges) {
+                showToast('Žádné změny k uložení.');
                 return;
             }
 
             showLoading();
+            
             try {
-                const response = await fetch(`${apiEpisodesUrl}/${episodeId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ links: links })
-                });
-                if (!response.ok) throw new Error('Chyba při ukládání');
-                showToast('Odkazy epizody uloženy!');
-                linksContainer.style.backgroundColor = '#d4edda';
-                setTimeout(() => { linksContainer.style.backgroundColor = ''; }, 1500);
+                // Here you would typically make a series of API calls or a single batch API call.
+                // For simplicity, let's just iterate and make a PUT request for each episode with updated links.
+                for (const update of updates) {
+                    await fetch(`${apiEpisodesUrl}/${update.episodeId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ links: update.links })
+                    });
+                }
+                
+                showToast('Celá série byla úspěšně uložena!');
+                seasonBlock.style.backgroundColor = '#d4edda';
+                setTimeout(() => { seasonBlock.style.backgroundColor = ''; }, 1500);
             } catch(error) {
-                linksContainer.style.backgroundColor = '#f8d7da';
-                showToast('Chyba při ukládání odkazů.', true);
+                seasonBlock.style.backgroundColor = '#f8d7da';
+                showToast('Chyba při ukládání série.', true);
+                console.error(error);
             } finally {
                 hideLoading();
             }
