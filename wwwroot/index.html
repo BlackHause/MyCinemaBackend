@@ -155,28 +155,28 @@
         }
 
         .episode-list {
-            display: none; /* Skryté ve výchozím stavu */
+            display: none;
             flex-direction: column;
             gap: 15px;
             padding: 15px;
             border: 1px solid var(--border-color);
             border-radius: 6px;
             background-color: var(--light-bg);
-            margin-top: -10px; /* Překrytí okraje */
+            margin-top: -10px;
         }
         
         .episode-list.active {
-            display: flex; /* Zobrazené po kliknutí */
+            display: flex;
         }
         
-        /* --- ZMENŠENÉ STYLY PRO ODKAZY --- */
         .episode-item {
-            background: none;
-            padding: 0;
-            border: none;
-            box-shadow: none;
+            background: #fff;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-radius: 6px;
         }
-
+        
         .episode-header-text {
             font-size: 1.1em;
             font-weight: bold;
@@ -185,28 +185,28 @@
         }
 
         .link-row {
-            gap: 5px; /* Menší mezery */
+            gap: 5px;
         }
 
         .link-row input[type="text"] {
-            padding: 8px; /* Menší padding */
-            font-size: 14px; /* Menší font */
+            padding: 8px;
+            font-size: 14px;
         }
         
         .link-row select {
-            width: 70px; /* Ještě menší šířka */
-            padding: 8px 5px; /* Menší padding */
+            width: 70px;
+            padding: 8px 5px;
             font-size: 14px;
         }
         
         .link-row button {
-            padding: 8px 10px; /* Menší padding tlačítek */
+            padding: 8px 10px;
         }
 
         .episode-links-container {
             display: flex;
             flex-direction: column;
-            gap: 5px; /* Menší mezery mezi odkazy */
+            gap: 5px;
         }
         
         .episode-item button {
