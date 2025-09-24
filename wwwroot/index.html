@@ -82,7 +82,7 @@
             text-align: right;
         }
         
-        input[type="text"], input[type="search"], select {
+        input[type="text"], input[type="search"] {
             width: 100%;
             box-sizing: border-box;
             padding: 12px;
@@ -221,13 +221,15 @@
         }
         
         .link-row input[type="text"] {
-            flex-grow: 2;
+            flex-grow: 1;
             margin-bottom: 0;
         }
         
         .link-row select {
-            flex-grow: 1;
+            flex-shrink: 0;
+            width: 80px; /* ZMENŠENÁ ŠÍŘKA PRO SEZNAM KVALITY */
             margin-bottom: 0;
+            padding: 12px 8px; /* ZMENŠENÝ PADDING PRO KOMPAKTNĚJŠÍ VZHLED */
         }
         
         .link-row button {
@@ -328,7 +330,6 @@
         .season-actions button {
             width: auto;
         }
-
     </style>
 </head>
 <body>
