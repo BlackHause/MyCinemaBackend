@@ -136,13 +136,17 @@
             flex-direction: column;
             align-items: flex-start;
             gap: 10px;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--border-color);
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 15px;
+            background-color: #fff;
         }
-        .episode-item:last-child { border-bottom: none; }
         
         .episode-item > span {
             font-weight: bold;
+            font-size: 1.1em;
+            color: #0056b3;
         }
         
         #toast {
@@ -318,7 +322,7 @@
                                 <option value="720p">720p</option>
                                 <option value="480p">480p</option>
                             </select>
-                            <button type="button" class="delete-link-button" style="display:none;">Smazat</button>
+                            <button type="button" class="delete-link-button delete">Smazat</button>
                         </div>
                     </div>
                     <button type="button" class="primary add-link-button">Přidat další odkaz</button>
@@ -440,7 +444,6 @@
                 const actionsCell = row.insertCell();
                 actionsCell.className = 'actions';
                 if (type === 'Film') {
-                     // ZMĚNA: Předáváme odkazy pro úpravu
                      const linksJson = JSON.stringify(item.links);
                      actionsCell.innerHTML = `<button class="edit" onclick='editMovie(${item.id}, "${item.title.replace(/"/g, '&quot;')}", ${linksJson})'>Upravit ID</button> <button class="delete" onclick="deleteItem(${item.id}, true)">Smazat</button>`;
                 } else {
@@ -481,7 +484,6 @@
         }
         searchBox.addEventListener('input', () => search(searchBox.value));
 
-        // NOVÉ FUNKCE PRO PŘIDÁVÁNÍ ODKAZŮ
         function addLinkRow(fileIdent = '', quality = '1080p') {
             const row = document.createElement('div');
             row.className = 'link-row';
@@ -492,7 +494,7 @@
                     <option value="720p" ${quality === '720p' ? 'selected' : ''}>720p</option>
                     <option value="480p" ${quality === '480p' ? 'selected' : ''}>480p</option>
                 </select>
-                <button type="button" class="delete-link-button">Smazat</button>
+                <button type="button" class="delete-link-button delete">Smazat</button>
             `;
             linksContainer.appendChild(row);
 
@@ -515,7 +517,6 @@
             formTitle.textContent = 'Přidat položku';
             cancelButton.style.display = 'none';
 
-            // Reset formuláře pro odkazy
             linksContainer.innerHTML = '';
             addLinkRow();
         }
@@ -530,7 +531,6 @@
             formTitle.textContent = `Upravit ID pro: ${title}`;
             cancelButton.style.display = 'block';
 
-            // Vyplníme formulář odkazy
             linksContainer.innerHTML = '';
             if (links && links.length > 0) {
                 links.forEach(link => addLinkRow(link.fileIdent, link.quality));
@@ -547,7 +547,6 @@
             const id = itemIdInput.value;
             const isUpdating = !!id;
             
-            // Získání odkazů z formuláře
             const links = Array.from(linksContainer.querySelectorAll('.link-row')).map(row => {
                 const fileIdent = row.querySelector('.fileIdent-input').value.trim();
                 const quality = row.querySelector('.quality-select').value;
@@ -648,20 +647,32 @@
                             linksSubContainer.className = 'links-container';
                             linksSubContainer.id = `links-container-${episode.id}`;
 
+                            if (episode.links && episode.links.length > 0) {
+                                episode.links.forEach(link => addLinkRowForEpisode(linksSubContainer, link.fileIdent, link.quality));
+                            } else {
+                                addLinkRowForEpisode(linksSubContainer);
+                            }
+                            
+                            const actionsContainer = document.createElement('div');
+                            actionsContainer.style.marginTop = '15px';
+                            
                             const addLinkBtn = document.createElement('button');
                             addLinkBtn.type = 'button';
                             addLinkBtn.className = 'primary add-link-button';
                             addLinkBtn.textContent = 'Přidat odkaz';
-                            addLinkBtn.addEventListener('click', () => addLinkRowForEpisode(episode.id));
+                            addLinkBtn.addEventListener('click', () => addLinkRowForEpisode(linksSubContainer));
 
-                            if (episode.links && episode.links.length > 0) {
-                                episode.links.forEach(link => addLinkRowForEpisode(episode.id, link.fileIdent, link.quality));
-                            } else {
-                                addLinkRowForEpisode(episode.id); // Přidá prázdný řádek pro nový odkaz
-                            }
+                            const saveBtn = document.createElement('button');
+                            saveBtn.type = 'button';
+                            saveBtn.className = 'save';
+                            saveBtn.textContent = 'Uložit';
+                            saveBtn.addEventListener('click', () => saveEpisodeLinks(episode.id));
+
+                            actionsContainer.appendChild(addLinkBtn);
+                            actionsContainer.appendChild(saveBtn);
                             
                             episodeItem.appendChild(linksSubContainer);
-                            episodeItem.appendChild(addLinkBtn);
+                            episodeItem.appendChild(actionsContainer);
                             
                             seasonBlock.appendChild(episodeItem);
                         });
@@ -681,13 +692,7 @@
             }
         }
         
-        function addLinkRowForEpisode(episodeId, fileIdent = '', quality = '1080p') {
-            const linksContainer = document.getElementById(`links-container-${episodeId}`);
-            if (!linksContainer) {
-                console.error(`Kontejner pro odkazy pro epizodu ${episodeId} nebyl nalezen.`);
-                return;
-            }
-
+        function addLinkRowForEpisode(linksContainer, fileIdent = '', quality = '1080p') {
             const row = document.createElement('div');
             row.className = 'link-row';
             row.innerHTML = `
@@ -697,8 +702,7 @@
                     <option value="720p" ${quality === '720p' ? 'selected' : ''}>720p</option>
                     <option value="480p" ${quality === '480p' ? 'selected' : ''}>480p</option>
                 </select>
-                <button type="button" class="delete-link-button">Smazat</button>
-                <button class="save" onclick="saveEpisodeLinks(${episodeId})">Uložit</button>
+                <button type="button" class="delete-link-button delete">Smazat</button>
             `;
             
             row.querySelector('.delete-link-button').addEventListener('click', () => {
