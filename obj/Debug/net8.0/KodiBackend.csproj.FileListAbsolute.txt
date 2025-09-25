@@ -146,6 +146,7 @@ C:\Users\dorci\Desktop\My Cinema\Server\KodiBackend\obj\Debug\net8.0\KodiBackend
 C:\Users\dorci\Desktop\My Cinema\Server\KodiBackend\obj\Debug\net8.0\KodiBackend.csproj.CoreCompileInputs.cache
 C:\Users\dorci\Desktop\My Cinema\Server\KodiBackend\obj\Debug\net8.0\KodiBackend.MvcApplicationPartsAssemblyInfo.cs
 C:\Users\dorci\Desktop\My Cinema\Server\KodiBackend\obj\Debug\net8.0\KodiBackend.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\dorci\Desktop\My Cinema\Server\KodiBackend\obj\Debug\net8.0\KodiBackend.sourcelink.json
 C:\Users\dorci\Desktop\My Cinema\Server\KodiBackend\obj\Debug\net8.0\rjimswa.dswa.cache.json
 C:\Users\dorci\Desktop\My Cinema\Server\KodiBackend\obj\Debug\net8.0\rjsmrazor.dswa.cache.json
 C:\Users\dorci\Desktop\My Cinema\Server\KodiBackend\obj\Debug\net8.0\rjsmcshtml.dswa.cache.json
@@ -160,4 +161,3 @@ C:\Users\dorci\Desktop\My Cinema\Server\KodiBackend\obj\Debug\net8.0\refint\Kodi
 C:\Users\dorci\Desktop\My Cinema\Server\KodiBackend\obj\Debug\net8.0\KodiBackend.pdb
 C:\Users\dorci\Desktop\My Cinema\Server\KodiBackend\obj\Debug\net8.0\KodiBackend.genruntimeconfig.cache
 C:\Users\dorci\Desktop\My Cinema\Server\KodiBackend\obj\Debug\net8.0\ref\KodiBackend.dll
-C:\Users\dorci\Desktop\My Cinema\Server\KodiBackend\obj\Debug\net8.0\KodiBackend.sourcelink.json

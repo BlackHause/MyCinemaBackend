@@ -5,11 +5,24 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ŘÍKÁME PROGRAMU, ABY DATABÁZI UKLÁDAL NA TRVALÝ DISK NA SERVERU
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite("Data Source=/app/data/kodi.db"));
+// --- ZDE JE JEDINÁ POTŘEBNÁ ZMĚNA ---
 
-// Tato část řeší cyklické reference a je v pořádku
+// 1. Zkusíme načíst cestu k databázi z proměnné prostředí (tu nastavíme v Railway).
+var databasePath = Environment.GetEnvironmentVariable("DATABASE_PATH");
+
+// 2. Pokud proměnná `DATABASE_PATH` existuje (na Railway), použijeme ji.
+//    Pokud neexistuje (lokálně u tebe), použijeme hodnotu z tvého `appsettings.json`.
+var connectionString = databasePath ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+// 3. Použijeme výsledný connection string k registraci databáze.
+//    Tento blok nahrazuje tvůj původní `builder.Services.AddDbContext`.
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlite(connectionString));
+
+// --- KONEC ZMĚN ---
+
+
+// Zbytek souboru zůstává stejný
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
@@ -19,12 +32,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient<TMDbService>();
 
-// --- PŘIDÁNO PRO WEBSHARE SLUŽBU ---
-// Registrujeme HttpClientFactory, aby ji naše služba mohla používat pro HTTP požadavky.
-builder.Services.AddHttpClient(); 
-// Registrujeme naši novou Webshare službu.
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<IWebshareService, WebshareService>();
-// ------------------------------------
 
 
 var app = builder.Build();
@@ -37,6 +46,7 @@ app.UseStaticFiles();
 
 app.UseAuthorization();
 app.MapControllers();
+
 // Automaticky spustí migraci databáze při startu
 using (var scope = app.Services.CreateScope())
 {
