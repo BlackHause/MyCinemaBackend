@@ -19,6 +19,14 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient<TMDbService>();
 
+// --- PŘIDÁNO PRO WEBSHARE SLUŽBU ---
+// Registrujeme HttpClientFactory, aby ji naše služba mohla používat pro HTTP požadavky.
+builder.Services.AddHttpClient(); 
+// Registrujeme naši novou Webshare službu.
+builder.Services.AddScoped<IWebshareService, WebshareService>();
+// ------------------------------------
+
+
 var app = builder.Build();
 
 app.UseSwagger();
