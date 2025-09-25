@@ -3,26 +3,19 @@ using KodiBackend.Data;
 using KodiBackend.Services;
 using System.Text.Json.Serialization;
 
+// TATO VERZE JE URCENA POUZE PRO WEB (RAILWAY)
+// Pro lokální testování je potřeba použít jinou verzi.
+
 var builder = WebApplication.CreateBuilder(args);
 
-// --- ZDE JE JEDINÁ POTŘEBNÁ ZMĚNA ---
+// --- Pevně nastavená cesta k databázi pro Railway ---
+var connectionString = "Data Source=/app/data/KodiBackend.db";
 
-// 1. Zkusíme načíst cestu k databázi z proměnné prostředí (tu nastavíme v Railway).
-var databasePath = Environment.GetEnvironmentVariable("DATABASE_PATH");
-
-// 2. Pokud proměnná `DATABASE_PATH` existuje (na Railway), použijeme ji.
-//    Pokud neexistuje (lokálně u tebe), použijeme hodnotu z tvého `appsettings.json`.
-var connectionString = databasePath ?? builder.Configuration.GetConnectionString("DefaultConnection");
-
-// 3. Použijeme výsledný connection string k registraci databáze.
-//    Tento blok nahrazuje tvůj původní `builder.Services.AddDbContext`.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(connectionString));
+// --- Konec změn ---
 
-// --- KONEC ZMĚN ---
 
-
-// Zbytek souboru zůstává stejný
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
