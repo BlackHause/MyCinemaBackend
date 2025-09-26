@@ -349,7 +349,7 @@ namespace KodiBackend.Controllers
             if (request.Count <= 0) return BadRequest("Počet musí být větší než 0.");
             
             // Získáme delší seznam (rezervu 500 navíc) pro doplňování
-            var titles = await _tmdbService.GetNewMoviesAsync(request.Count + 500);
+            var titles = await _tmdbService.GetNewMoviesAsync(request.Count + 1500);
             var (addedTitles, skippedTitles, failedTitles) = await AddMoviesFromTitlesAsync(titles, request.Count);
 
             return Ok(new { 

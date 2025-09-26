@@ -105,7 +105,7 @@ namespace KodiBackend.Services
 
             Console.WriteLine($"[CSFD DIAG] Úspěšně proloženo a deduplikováno. Celkem {interleavedTitles.Count} unikátních titulů.");
 
-            return interleavedTitles.Take(1000).ToList();
+            return interleavedTitles.Take(500).ToList();
         }
         
         // Stávající metoda pro CZ/SK Top seriály
@@ -148,7 +148,7 @@ namespace KodiBackend.Services
 
             Console.WriteLine($"[CSFD DIAG] Úspěšně proloženo a deduplikováno seriálů. Celkem {interleavedTitles.Count} unikátních titulů.");
 
-            return interleavedTitles.Take(1000).ToList();
+            return interleavedTitles.Take(500).ToList();
         }
         
         // Stávající metoda pro obecné top filmy
