@@ -14,13 +14,19 @@ namespace KodiBackend.Services
     {
         private readonly HttpClient _httpClient;
         
-        // Pevné URL pro žebříček filmů
+        // Pevné URL pro žebříček CZ/SK filmů (stávající)
         private const string CsfdTopCzSkUrl1 = "https://www.csfd.cz/zebricky/vlastni-vyber/?filter=rlW0rKOyVwbkYPWipzyanJ4vBwR5AljvM2IhpzHvBygqYPW5MJSlK2Mlo20vBz51oTjfVayyLKWsqT8vBz51oTjfVzSwqT9lVwcoKFjvMTylMJA0o3VvBygqsD";
         private const string CsfdTopCzUrl2 = "https://www.csfd.cz/zebricky/vlastni-vyber/?filter=rlW0rKOyVwbkYPWipzyanJ4vBwRfVzqyoaWyVwcoKFjvrJIupy9zpz9gVwchqJkfYPW5MJSlK3EiVwchqJkfYPWuL3EipvV6J10fVzEcpzIwqT9lVwcoKK0"; 
         
-        // NOVÉ: Pevné URL pro žebříček seriálů
+        // Pevné URL pro žebříček CZ/SK seriálů (stávající)
         private const string CsfdTopShowCzSkUrl1 = "https://www.csfd.cz/zebricky/vlastni-vyber/?filter=rlW0rKOyVwbmYPWipzyanJ4vBwRfVzqyoaWyVwcoKFjvrJIupy9zpz9gVwchqJkfYPW5MJSlK3EiVwchqJkfYPWuL3EipvV6J10fVzEcpzIwqT9lVwcoKK0";
         private const string CsfdTopShowCzUrl2 = "https://www.csfd.cz/zebricky/vlastni-vyber/?filter=rlW0rKOyVwbmYPWipzyanJ4vBwR5AljvM2IhpzHvBygqYPW5MJSlK2Mlo20vBz51oTjfVayyLKWsqT8vBz51oTjfVzSwqT9lVwcoKFjvMTylMJA0o3VvBygqsD";
+        
+        // Pevná URL pro obecné top filmy (stávající)
+        private const string CsfdTopGeneralUrl = "https://www.csfd.cz/zebricky/filmy/nejlepsi/"; 
+        
+        // NOVÁ KONSTANTA: Nejlepší seriály (obecné) z ČSFD
+        private const string CsfdTopShowGeneralUrl = "https://www.csfd.cz/zebricky/serialy/nejlepsi/"; 
 
         public CSFDService(HttpClient httpClient)
         {
@@ -59,6 +65,7 @@ namespace KodiBackend.Services
             return movieTitles;
         }
 
+        // Metoda pro stávající CZ/SK Top filmy
         public async Task<List<string>> GetTopTitlesFromCsfdAsync()
         {
             Console.WriteLine("[CSFD DIAG] Zahajuji scraping 2 ČSFD žebříčků filmů a prokládání...");
@@ -101,12 +108,11 @@ namespace KodiBackend.Services
             return interleavedTitles.Take(500).ToList();
         }
         
-        // NOVÁ METODA: Stejná logika, ale pro SERIÁLY
+        // Stávající metoda pro CZ/SK Top seriály
         public async Task<List<string>> GetTopShowTitlesFromCsfdAsync()
         {
             Console.WriteLine("[CSFD DIAG] Zahajuji scraping 2 ČSFD žebříčků seriálů a prokládání...");
             
-            // Stahujeme z nových URL pro seriály
             var task1 = ScrapeTitles(CsfdTopShowCzSkUrl1);
             var task2 = ScrapeTitles(CsfdTopShowCzUrl2);
 
@@ -143,6 +149,20 @@ namespace KodiBackend.Services
             Console.WriteLine($"[CSFD DIAG] Úspěšně proloženo a deduplikováno seriálů. Celkem {interleavedTitles.Count} unikátních titulů.");
 
             return interleavedTitles.Take(500).ToList();
+        }
+        
+        // Stávající metoda pro obecné top filmy
+        public async Task<List<string>> GetTopGeneralTitlesFromCsfdAsync()
+        {
+            Console.WriteLine("[CSFD DIAG] Stahuji obecný žebříček nejlepších filmů z ČSFD...");
+            return await ScrapeTitles(CsfdTopGeneralUrl);
+        }
+
+        // NOVÁ METODA: Stahuje obecné top seriály z ČSFD (jeden seznam)
+        public async Task<List<string>> GetTopShowGeneralTitlesFromCsfdAsync()
+        {
+            Console.WriteLine("[CSFD DIAG] Stahuji obecný žebříček nejlepších seriálů z ČSFD...");
+            return await ScrapeTitles(CsfdTopShowGeneralUrl);
         }
     }
 }

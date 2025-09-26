@@ -18,12 +18,6 @@ namespace KodiBackend.Controllers
         public string? Title { get; set; }
     }
     
-    // TŘÍDA BulkAddRequest BYLA ODSTRANĚNA (Váš původní, správný stav pro kompilaci)
-    // public class BulkAddRequest 
-    // {
-    //     public int Count { get; set; }
-    // }
-
     [ApiController]
     [Route("api/[controller]")]
     public class ShowsController : ControllerBase
@@ -247,16 +241,20 @@ namespace KodiBackend.Controllers
             return await _context.Shows.ToListAsync();
         }
         
+        // Endpoint Top-Rated (PŘEPNUTO NA ČSFD)
         [HttpPost("top-rated")]
         public async Task<IActionResult> PostTopRatedShows([FromBody] BulkAddRequest request)
         {
             if (request.Count <= 0) return BadRequest("Počet musí být větší než 0.");
             
-            var titles = await _tmdbService.GetTopRatedShowsAsync(request.Count + 500); 
+            // 1. ZÍSKÁNÍ TITULŮ Z ČSFD (OBECNÝ TOP)
+            var titles = await _csfdService.GetTopShowGeneralTitlesFromCsfdAsync(); 
+            
+            // 2. FILTROVÁNÍ A PŘIDÁNÍ PŘES TMDB DETAILY
             var (addedTitles, skippedTitles, failedTitles) = await AddShowsFromTitlesAsync(titles, request.Count);
 
             return Ok(new { 
-                Message = $"Úspěšně přidáno {addedTitles.Count} nových Top Rated seriálů. Přeskočeno {skippedTitles.Count} existujících. Ignorováno {failedTitles.Count} seriálů.", 
+                Message = $"Úspěšně přidáno {addedTitles.Count} Top Rated seriálů (ČSFD). Přeskočeno {skippedTitles.Count} existujících. Ignorováno {failedTitles.Count} seriálů.", 
                 AddedTitles = addedTitles, 
                 SkippedTitles = skippedTitles,
                 FailedTitles = failedTitles
@@ -358,7 +356,6 @@ namespace KodiBackend.Controllers
 
             bool foundAnyLink = false;
             
-            // PŘI RUČNÍM PŘIDÁNÍ KONTROLA S1 NENÍ, PROCHÁZÍ SE VŠE
             foreach (var season in showFromTMDb.Seasons.OrderBy(s => s.SeasonNumber))
             {
                 foreach (var episode in season.Episodes)

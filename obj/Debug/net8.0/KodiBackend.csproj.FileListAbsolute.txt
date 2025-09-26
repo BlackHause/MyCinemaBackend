@@ -325,3 +325,4 @@ C:\Users\dorci\Desktop\TEST\test\KodiBackend\obj\Debug\net8.0\KodiBackend.pdb
 C:\Users\dorci\Desktop\TEST\test\KodiBackend\obj\Debug\net8.0\KodiBackend.genruntimeconfig.cache
 C:\Users\dorci\Desktop\TEST\test\KodiBackend\obj\Debug\net8.0\ref\KodiBackend.dll
 C:\Users\dorci\Desktop\TEST\test\KodiBackend\bin\Debug\net8.0\HtmlAgilityPack.dll
+C:\Users\dorci\Desktop\My Cinema\Server\KodiBackend\bin\Debug\net8.0\HtmlAgilityPack.dll

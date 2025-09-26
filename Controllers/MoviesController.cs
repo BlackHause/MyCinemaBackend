@@ -186,7 +186,7 @@ namespace KodiBackend.Controllers
                     {
                         foreach (var linkDto in webshareLinks.Take(4))
                         {
-                            // Automatické přidání: IsManuallyVerified je false (default)
+                            // Automatické přidání: IsManuallyVerified = false (default)
                             movieFromTMDb.Links.Add(new WebshareLink { FileIdent = linkDto.Ident, Quality = $"{linkDto.SizeGb:F2} GB" });
                         }
                         
@@ -291,31 +291,34 @@ namespace KodiBackend.Controllers
             return CreatedAtAction(nameof(GetMovie), new { id = movieFromTMDb.Id }, movieFromTMDb);
         }
 
-        // Endpoint Top-Rated
+        // Endpoint Top-Rated (Nyní bere data z ČSFD)
         [HttpPost("top-rated")]
         public async Task<IActionResult> PostTopRatedMovies([FromBody] BulkAddRequest request)
         {
             if (request.Count <= 0) return BadRequest("Počet musí být větší než 0.");
             
-            // Získáme delší seznam (rezervu 500 navíc) pro doplňování
-            var titles = await _tmdbService.GetTopRatedMoviesAsync(request.Count + 500); 
-            var (addedTitles, skippedTitles, failedTitles) = await AddMoviesFromTitlesAsync(titles, request.Count);
+            // 1. ZÍSKÁNÍ TITULŮ Z ČSFD (OBECNÝ TOP)
+            var titles = await _csfdService.GetTopGeneralTitlesFromCsfdAsync(); 
+            
+            // 2. FILTROVÁNÍ A PŘIDÁNÍ PŘES TMDB DETAILY
+            // Použijeme seznam jako vstup pro AddMoviesFromTitlesAsync
+            var (added, skipped, failed) = await AddMoviesFromTitlesAsync(titles, request.Count);
 
             return Ok(new { 
-                Message = $"Úspěšně přidáno {addedTitles.Count} nových Top Rated filmů. Přeskočeno {skippedTitles.Count} existujících. Ignorováno {failedTitles.Count} filmů.", 
-                AddedTitles = addedTitles, 
-                SkippedTitles = skippedTitles,
-                FailedTitles = failedTitles
+                Message = $"Úspěšně přidáno {added.Count} Top Rated filmů (ČSFD). Přeskočeno {skipped.Count} existujících. Ignorováno {failed.Count} filmů.", 
+                AddedTitles = added, 
+                SkippedTitles = skipped,
+                FailedTitles = failed
             });
         }
 
-        // NOVÝ ENDPOINT: CZ/SK Top-Rated (Nyní využívá ČSFD scraping)
+        // Endpoint CZ/SK Top-Rated (PŮVODNÍ FUNKCE)
         [HttpPost("top-czsk")]
         public async Task<IActionResult> PostTopCzSkMovies([FromBody] BulkAddRequest request)
         {
             if (request.Count <= 0) return BadRequest("Počet musí být větší než 0.");
             
-            // 1. ZÍSKÁNÍ TITULŮ Z ČSFD SCRAPINGEM
+            // 1. ZÍSKÁNÍ TITULŮ Z ČSFD SCRAPINGEM (PROKLÁDANÉ CZ/SK)
             var csfdTitles = await _csfdService.GetTopTitlesFromCsfdAsync(); 
             
             // 2. FILTROVÁNÍ A PŘIDÁNÍ PŘES TMDB

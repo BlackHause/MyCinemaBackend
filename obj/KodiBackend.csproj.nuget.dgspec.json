@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\dorci\\Desktop\\TEST\\test\\KodiBackend\\KodiBackend.csproj": {}
+    "C:\\Users\\dorci\\Desktop\\My Cinema\\Server\\KodiBackend\\KodiBackend.csproj": {}
   },
   "projects": {
-    "C:\\Users\\dorci\\Desktop\\TEST\\test\\KodiBackend\\KodiBackend.csproj": {
+    "C:\\Users\\dorci\\Desktop\\My Cinema\\Server\\KodiBackend\\KodiBackend.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\dorci\\Desktop\\TEST\\test\\KodiBackend\\KodiBackend.csproj",
+        "projectUniqueName": "C:\\Users\\dorci\\Desktop\\My Cinema\\Server\\KodiBackend\\KodiBackend.csproj",
         "projectName": "KodiBackend",
-        "projectPath": "C:\\Users\\dorci\\Desktop\\TEST\\test\\KodiBackend\\KodiBackend.csproj",
+        "projectPath": "C:\\Users\\dorci\\Desktop\\My Cinema\\Server\\KodiBackend\\KodiBackend.csproj",
         "packagesPath": "C:\\Users\\dorci\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\dorci\\Desktop\\TEST\\test\\KodiBackend\\obj\\",
+        "outputPath": "C:\\Users\\dorci\\Desktop\\My Cinema\\Server\\KodiBackend\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\dorci\\AppData\\Roaming\\NuGet\\NuGet.Config"
