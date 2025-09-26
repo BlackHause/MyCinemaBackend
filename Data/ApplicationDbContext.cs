@@ -1,3 +1,5 @@
+// [Data/ApplicationDbContext.cs]
+
 using Microsoft.EntityFrameworkCore;
 using KodiBackend.Models;
 
@@ -15,10 +17,26 @@ namespace KodiBackend.Data
         public DbSet<Season> Seasons { get; set; }
         public DbSet<Episode> Episodes { get; set; }
         public DbSet<WebshareLink> WebshareLinks { get; set; }
-        public DbSet<HistoryEntry> HistoryEntries { get; set; } // Nová tabulka pro historii
+        public DbSet<HistoryEntry> HistoryEntries { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // --- OPRAVA PRO DUPLICITY FILMŮ ---
+            modelBuilder.Entity<Movie>()
+                .HasIndex(m => m.TMDbId)
+                .IsUnique();
+            
+            // --- NOVÁ OPRAVA PRO DUPLICITY SERIÁLŮ ---
+            modelBuilder.Entity<Show>()
+                .HasIndex(s => s.TMDbId)
+                .IsUnique();
+            
+            // --- OPRAVA PRO DUPLICITY WEBSHARE ODKAZŮ ---
+            modelBuilder.Entity<WebshareLink>()
+                .HasIndex(l => l.FileIdent)
+                .IsUnique();
+            
+            
             // Konfigurace kaskádového mazání pro filmy a jejich odkazy
             modelBuilder.Entity<Movie>()
                 .HasMany(m => m.Links)
@@ -30,7 +48,7 @@ namespace KodiBackend.Data
             modelBuilder.Entity<Show>()
                 .HasMany(s => s.Seasons)
                 .WithOne(s => s.Show)
-                .HasForeignKey(s => s.ShowId)
+                .HasForeignKey(s => s.ShowId) 
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Konfigurace kaskádového mazání pro sezóny a jejich epizody
@@ -46,6 +64,11 @@ namespace KodiBackend.Data
                 .WithOne(l => l.Episode)
                 .HasForeignKey(l => l.EpisodeId)
                 .OnDelete(DeleteBehavior.Cascade);
+                
+            // KLÍČOVÉ PRO BLACKLIST: Vytvoříme UNIKÁTNÍ INDEX na Title a MediaType.
+            modelBuilder.Entity<HistoryEntry>()
+                .HasIndex(h => new { h.Title, h.MediaType })
+                .IsUnique();
         }
     }
 }

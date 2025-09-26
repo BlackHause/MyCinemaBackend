@@ -3,6 +3,7 @@ using System;
 using KodiBackend.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KodiBackend.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250926100847_AddLinkUpdateFields")]
+    partial class AddLinkUpdateFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.9");
@@ -101,9 +104,6 @@ namespace KodiBackend.Data.Migrations
                     b.Property<int?>("Runtime")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("TMDbId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("Title")
                         .HasColumnType("TEXT");
 
@@ -111,9 +111,6 @@ namespace KodiBackend.Data.Migrations
                         .HasColumnType("REAL");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("TMDbId")
-                        .IsUnique();
 
                     b.ToTable("Movies");
                 });
@@ -155,16 +152,10 @@ namespace KodiBackend.Data.Migrations
                     b.Property<string>("PosterPath")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("TMDbId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("Title")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("TMDbId")
-                        .IsUnique();
 
                     b.ToTable("Shows");
                 });
@@ -193,9 +184,6 @@ namespace KodiBackend.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("EpisodeId");
-
-                    b.HasIndex("FileIdent")
-                        .IsUnique();
 
                     b.HasIndex("MovieId");
 

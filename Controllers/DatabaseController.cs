@@ -1,12 +1,16 @@
+// [Controllers/DatabaseController.cs] - UPRAVENÝ OBSAH
+
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using KodiBackend.Data;
 using KodiBackend.Models;
-using Microsoft.EntityFrameworkCore;
+using KodiBackend.Services;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Linq; 
-using KodiBackend.Services; 
+using System;
+using Microsoft.AspNetCore.Http;
 
 namespace KodiBackend.Controllers
 {
@@ -22,11 +26,14 @@ namespace KodiBackend.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly TMDbService _tmdbService; 
+        private readonly IWebshareService _webshareService;
 
-        public DatabaseController(ApplicationDbContext context, TMDbService tmdbService)
+        // UPRAVENÝ KONSTRUKTOR
+        public DatabaseController(ApplicationDbContext context, TMDbService tmdbService, IWebshareService webshareService)
         {
             _context = context;
             _tmdbService = tmdbService;
+            _webshareService = webshareService;
         }
 
         [HttpGet("export")]
@@ -156,7 +163,94 @@ namespace KodiBackend.Controllers
             return Ok(new { message = $"Aktualizace dokončena. Upraveno {moviesUpdated} filmů a {showsUpdated} seriálů." });
         }
 
-        // === Nové akce pro historii sledování ===
+        // --- NOVÝ ENDPOINT: POST /api/Database/refresh-links ---
+        [HttpPost("refresh-links")]
+        public async Task<IActionResult> RefreshLinks()
+        {
+            // Maximální stáří kontroly je nastaveno na 3 měsíce (90 dní)
+            var staleThreshold = DateTime.UtcNow.AddDays(-90); 
+            
+            // FILTR: Hledá filmy, které splňují VŠECHNY tři podmínky:
+            // 1. Nemají ŽÁDNÝ ručně ověřený odkaz (OCHRANA PŘED PŘEPSÁNÍM)
+            // A SOUČASNĚ splňují alespoň jednu z podmínek automatické kontroly:
+            //    A. Nemají žádný odkaz (Links.Count == 0) NEBO
+            //    B. Nikdy nebyly kontrolovány (LastLinkCheck == null) NEBO
+            //    C. Byly naposledy kontrolovány před více než 90 dny
+            var moviesToUpdate = await _context.Movies
+                .Include(m => m.Links)
+                // Krok 1: Vyloučíme filmy s ručně ověřenými odkazy.
+                .Where(m => !m.Links.Any(l => l.IsManuallyVerified)) 
+                // Krok 2: Aplikujeme automatický filtr na zbytek filmů.
+                .Where(m => m.Links.Count == 0 || m.LastLinkCheck == null || m.LastLinkCheck.Value < staleThreshold)
+                .ToListAsync();
+
+            if (!moviesToUpdate.Any())
+            {
+                return Ok(new { Message = "Databáze je aktuální. Žádné filmy nevyžadují aktualizaci odkazů." });
+            }
+
+            var updatedCount = 0;
+            var failedCount = 0;
+            var updatedTitles = new List<string>();
+            var failedTitles = new List<string>();
+
+            foreach (var movie in moviesToUpdate)
+            {
+                try
+                {
+                    // Odstranění starých odkazů a příprava na novou kontrolu
+                    _context.WebshareLinks.RemoveRange(movie.Links);
+                    movie.Links.Clear();
+
+                    var webshareLinks = await _webshareService.FindLinksAsync(movie.Title!, movie.ReleaseYear, null, null);
+
+                    if (webshareLinks.Any())
+                    {
+                        foreach (var linkDto in webshareLinks.Take(4))
+                        {
+                            // Automatické přidání: IsManuallyVerified je false (default)
+                            movie.Links.Add(new WebshareLink { FileIdent = linkDto.Ident, Quality = $"{linkDto.SizeGb:F2} GB" });
+                        }
+                        updatedCount++;
+                        updatedTitles.Add(movie.Title!);
+                    }
+                    else
+                    {
+                        failedCount++;
+                        failedTitles.Add(movie.Title!);
+                    }
+
+                    // VŽDY aktualizujeme čas kontroly, aby se film nezkoušel znovu
+                    movie.LastLinkCheck = DateTime.UtcNow;
+
+                    // Ukládání po 10 filmech pro zamezení velkých transakcí
+                    if ((updatedCount + failedCount) % 10 == 0) 
+                    {
+                        await _context.SaveChangesAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Chyba při aktualizaci odkazů pro '{movie.Title}': {ex.Message}");
+                    movie.LastLinkCheck = DateTime.UtcNow; 
+                    failedCount++;
+                    failedTitles.Add(movie.Title!);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                Message = $"Aktualizace dokončena. Úspěšně nalezeno/aktualizováno {updatedCount} odkazů. Nelze nalézt pro {failedCount} filmů.",
+                UpdatedTitles = updatedTitles,
+                FailedTitles = failedTitles
+            });
+        }
+        // --- KONEC NOVÉHO ENDPOINTU ---
+
+
+        // === Původní akce pro historii sledování ===
 
         [HttpPost("history")]
         public async Task<IActionResult> AddToHistory([FromBody] HistoryEntryDto entryDto)
