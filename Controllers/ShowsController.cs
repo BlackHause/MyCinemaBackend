@@ -145,6 +145,39 @@ namespace KodiBackend.Controllers
                     skipReason = $"Překročen limit {MaxEpisodesForProcessing} epizod ({totalEpisodes} nalezeno).";
                 }
 
+                // *** ZAČÁTEK NOVÉ LOGIKY PRO KONTROLU 1. SÉRIE ***
+                var seasonOne = showFromTMDb.Seasons.FirstOrDefault(s => s.SeasonNumber == 1);
+                bool seasonOneHasLinks = false;
+                
+                if (skipReason == null)
+                {
+                    // 1. Zjistit, jestli existuje 1. série a má nějaké odkazy.
+                    if (seasonOne != null)
+                    {
+                        foreach (var episode in seasonOne.Episodes.OrderBy(e => e.EpisodeNumber))
+                        {
+                            var webshareLinks = await _webshareService.FindLinksAsync(
+                                showFromTMDb.Title, 
+                                null, 
+                                seasonOne.SeasonNumber, 
+                                episode.EpisodeNumber);
+                            
+                            if (webshareLinks.Any())
+                            {
+                                seasonOneHasLinks = true;
+                                break; // Stačí jeden odkaz v S1, abychom prošli kontrolou.
+                            }
+                        }
+
+                        if (!seasonOneHasLinks)
+                        {
+                            skipReason = "Nenalezen žádný Webshare odkaz pro 1. Sérii.";
+                        }
+                    }
+                    // Pozn.: Pokud Season 1 neexistuje, přeskočíme tuto kontrolu a spoléháme na obecné pravidlo níže.
+                }
+
+                // 2. Pokud 1. série prošla (nebo neexistuje), prohledáme VŠECHNY série pro přidání odkazů.
                 bool foundAnyLink = false;
                 if (skipReason == null)
                 {
@@ -179,8 +212,9 @@ namespace KodiBackend.Controllers
                         }
                     }
                     
-                    if (!foundAnyLink) { skipReason = "Nenalezen žádný Webshare odkaz."; }
+                    if (!foundAnyLink) { skipReason = "Nenalezen žádný Webshare odkaz (ani v ostatních sériích)."; }
                 }
+                // *** KONEC NOVÉ LOGIKY PRO KONTROLU 1. SÉRIE ***
 
                 if (skipReason != null)
                 {
@@ -324,6 +358,7 @@ namespace KodiBackend.Controllers
 
             bool foundAnyLink = false;
             
+            // PŘI RUČNÍM PŘIDÁNÍ KONTROLA S1 NENÍ, PROCHÁZÍ SE VŠE
             foreach (var season in showFromTMDb.Seasons.OrderBy(s => s.SeasonNumber))
             {
                 foreach (var episode in season.Episodes)
