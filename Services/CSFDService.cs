@@ -33,6 +33,7 @@ namespace KodiBackend.Services
             _httpClient = httpClient;
         }
 
+        // PŮVODNÍ ScrapeTitles je jednoduchá (bez stránkování). Ponecháme, ale pro obecné žebříčky vytvoříme novou metodu.
         private async Task<List<string>> ScrapeTitles(string url)
         {
             var movieTitles = new List<string>();
@@ -63,6 +64,43 @@ namespace KodiBackend.Services
             }
             Console.WriteLine($"[CSFD DIAG] Nalezeno {movieTitles.Count} titulů na {url}.");
             return movieTitles;
+        }
+
+        // NOVÁ METODA: ZAVÁDÍ STRÁNKOVÁNÍ PRO OBECNÉ ŽEBŘÍČKY (FILMY/SERIÁLY)
+        private async Task<List<string>> ScrapeGeneralTitlesWithPagination(string baseUrl, int maxPages = 5)
+        {
+            var allTitles = new List<string>();
+            var addedTitles = new HashSet<string>();
+            
+            for (int page = 1; page <= maxPages; page++)
+            {
+                // Formátování URL pro stránkování: 1. stránka je bez ?strana=X, další stránky mají ?strana=X
+                string url = page == 1 ? baseUrl : $"{baseUrl}?strana={page}";
+                Console.WriteLine($"[CSFD DIAG] Stahuji stránku {page}: {url}");
+
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode) break; 
+
+                var html = await response.Content.ReadAsStringAsync();
+                var htmlDoc = new HtmlDocument();
+                htmlDoc.LoadHtml(html);
+
+                var movieNodes = htmlDoc.DocumentNode.SelectNodes("//a[@class='film-title-name']");
+                
+                // Přerušíme, pokud nenajdeme žádné titulky (to znamená konec žebříčku)
+                if (movieNodes == null || movieNodes.Count == 0) break; 
+
+                foreach (var node in movieNodes)
+                {
+                    string? title = node.GetAttributeValue("title", string.Empty);
+                    if (!string.IsNullOrWhiteSpace(title) && addedTitles.Add(title.Trim()))
+                    {
+                        allTitles.Add(title.Trim()); 
+                    }
+                }
+            }
+            Console.WriteLine($"[CSFD DIAG] Nalezeno celkem {allTitles.Count} unikátních titulů z obecného žebříčku.");
+            return allTitles;
         }
 
         // Metoda pro stávající CZ/SK Top filmy
@@ -105,7 +143,8 @@ namespace KodiBackend.Services
 
             Console.WriteLine($"[CSFD DIAG] Úspěšně proloženo a deduplikováno. Celkem {interleavedTitles.Count} unikátních titulů.");
 
-            return interleavedTitles.Take(500).ToList();
+            // PŮVODNÍ LIMIT 500 TITULŮ (NAVIŠUJEME PRO ZAJIŠTĚNÍ DOSTATEČNÉ REZERVY)
+            return interleavedTitles.Take(1000).ToList();
         }
         
         // Stávající metoda pro CZ/SK Top seriály
@@ -148,21 +187,24 @@ namespace KodiBackend.Services
 
             Console.WriteLine($"[CSFD DIAG] Úspěšně proloženo a deduplikováno seriálů. Celkem {interleavedTitles.Count} unikátních titulů.");
 
-            return interleavedTitles.Take(500).ToList();
+            // PŮVODNÍ LIMIT 500 TITULŮ (NAVIŠUJEME PRO ZAJIŠTĚNÍ DOSTATEČNÉ REZERVY)
+            return interleavedTitles.Take(1000).ToList();
         }
         
-        // Stávající metoda pro obecné top filmy
+        // ZMĚNA: Stávající metoda pro obecné top filmy (používá stránkování)
         public async Task<List<string>> GetTopGeneralTitlesFromCsfdAsync()
         {
             Console.WriteLine("[CSFD DIAG] Stahuji obecný žebříček nejlepších filmů z ČSFD...");
-            return await ScrapeTitles(CsfdTopGeneralUrl);
+            // ZMĚNA: Používáme stránkování, zkusíme stáhnout 5 stránek
+            return await ScrapeGeneralTitlesWithPagination(CsfdTopGeneralUrl, maxPages: 5);
         }
 
-        // NOVÁ METODA: Stahuje obecné top seriály z ČSFD (jeden seznam)
+        // NOVÁ METODA: Stahuje obecné top seriály z ČSFD (jeden seznam se stránkováním)
         public async Task<List<string>> GetTopShowGeneralTitlesFromCsfdAsync()
         {
             Console.WriteLine("[CSFD DIAG] Stahuji obecný žebříček nejlepších seriálů z ČSFD...");
-            return await ScrapeTitles(CsfdTopShowGeneralUrl);
+            // ZMĚNA: Používáme stránkování, zkusíme stáhnout 5 stránek
+            return await ScrapeGeneralTitlesWithPagination(CsfdTopShowGeneralUrl, maxPages: 5);
         }
     }
 }
