@@ -118,6 +118,12 @@ namespace KodiBackend.Controllers
                 .Select(h => NormalizeTitleForComparison(h.Title!)) // NORMALIZACE BLACKLISTU
                 .ToListAsync());
 
+            // *** NOVÁ KLÍČOVÁ OPRAVA ***: Načteme existující FileIdent do paměti, abychom se vyhnuli DB chybě.
+            var existingFileIdents = new HashSet<string>(await _context.WebshareLinks
+                .Where(l => l.FileIdent != null)
+                .Select(l => l.FileIdent!)
+                .ToListAsync());
+
             // Vytvoříme seznam pro hromadné uložení
             var moviesToAdd = new List<Movie>();
 
@@ -128,7 +134,7 @@ namespace KodiBackend.Controllers
                 if (string.IsNullOrWhiteSpace(title)) continue;
                 string normalizedTitle = NormalizeTitleForComparison(title);
 
-                // 1. RYCHLÁ KONTROLA DUPLICITY NÁZVU (V PAMĚTI) - Ponecháno dle Vašeho přání
+                // 1. RYCHLÁ KONTROLA DUPLICITY NÁZVU (V PAMĚTI)
                 if (existingTitles.Contains(normalizedTitle)) 
                 {
                     skippedTitles.Add(title);
@@ -150,10 +156,8 @@ namespace KodiBackend.Controllers
                 }
                 
                 // 4. *** KLÍČOVÁ KONTROLA TMDb ID V DATABÁZI ***
-                // TATO KONTROLA ZABRÁNÍ CHYBĚ 'UNIQUE constraint failed: Movies.TMDbId'
                 if (await _context.Movies.AnyAsync(m => m.TMDbId == movieFromTMDb.TMDbId))
                 {
-                    // Film s tímto TMDb ID již existuje, přeskočíme ho a považujeme ho za přeskočený (skipped).
                     skippedTitles.Add(movieFromTMDb.Title);
                     continue;
                 }
@@ -186,8 +190,14 @@ namespace KodiBackend.Controllers
                     {
                         foreach (var linkDto in webshareLinks.Take(4))
                         {
-                            // Automatické přidání: IsManuallyVerified = false (default)
-                            movieFromTMDb.Links.Add(new WebshareLink { FileIdent = linkDto.Ident, Quality = $"{linkDto.SizeGb:F2} GB" });
+                            // *** KLÍČOVÁ OPRAVA: Kontrola FileIdent před přidáním ***
+                            if (!existingFileIdents.Contains(linkDto.Ident))
+                            {
+                                // Automatické přidání: IsManuallyVerified = false (default)
+                                movieFromTMDb.Links.Add(new WebshareLink { FileIdent = linkDto.Ident, Quality = $"{linkDto.SizeGb:F2} GB" });
+                                // Přidáme ident do HashSetu pro kontrolu v rámci stejného běhu
+                                existingFileIdents.Add(linkDto.Ident); 
+                            }
                         }
                         
                         // Přidání k seznamu pro hromadné uložení
