@@ -1,3 +1,5 @@
+// [Controllers/MoviesController.cs]
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using KodiBackend.Data;
@@ -129,6 +131,7 @@ namespace KodiBackend.Controllers
 
             foreach (var title in allTitles)
             {
+                // TOTO JE ŘÁDEK, KTERÝ RESPEKTUJE VÁŠ JSON VSTUP Count
                 if (addedTitles.Count >= targetCount) break;
                 
                 if (string.IsNullOrWhiteSpace(title)) continue;
@@ -348,8 +351,8 @@ namespace KodiBackend.Controllers
         {
             if (request.Count <= 0) return BadRequest("Počet musí být větší než 0.");
             
-            // Získáme delší seznam (rezervu 500 navíc) pro doplňování
-            var titles = await _tmdbService.GetNewMoviesAsync(request.Count + 1500);
+            // ZMĚNA: Navýšena rezerva z 500 na 2000
+            var titles = await _tmdbService.GetNewMoviesAsync(request.Count + 2000);
             var (addedTitles, skippedTitles, failedTitles) = await AddMoviesFromTitlesAsync(titles, request.Count);
 
             return Ok(new { 
