@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Microsoft.Extensions.Configuration;
+using System.Text.RegularExpressions; 
 
 public class WebshareService : IWebshareService
 {
@@ -64,10 +65,22 @@ public class WebshareService : IWebshareService
             query = $"{title} {year.Value}";
         }
         
+        // --- Přesnější query pro seriály ---
+        if (isSeriesSearch)
+        {
+            // Oprava chyby CS8629: Operátor ! je bezpečný, protože isSeriesSearch je true.
+            string s_d2 = season!.Value.ToString("D2"); 
+            string e_d2 = episode!.Value.ToString("D2");
+            query = $"{title} S{s_d2}E{e_d2}"; 
+        }
+        // ------------------------------------------------
+        
         var token = await GetTokenAsync();
         var client = _httpClientFactory.CreateClient();
         
+        // --- LOG: HLEDANÝ DOTAZ ---
         Console.WriteLine($"\n🔍 HLEDÁM S DOTAZEM: '{query}'");
+        
         var searchData = new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("what", query), new KeyValuePair<string, string>("category", "video"), new KeyValuePair<string, string>("limit", "500"), new KeyValuePair<string, string>("wst", token ?? "") });
         var searchResponse = await client.PostAsync("https://webshare.cz/api/search/", searchData);
         if (!searchResponse.IsSuccessStatusCode) return new List<WebshareLinkDto>();
@@ -79,6 +92,31 @@ public class WebshareService : IWebshareService
 
         var titleKeywords = title.ToLowerInvariant().Split(new[] { ' ', ':', '-' }, StringSplitOptions.RemoveEmptyEntries);
         var videoExtensions = new[] { ".mkv", ".mp4", ".avi" };
+        
+        // --- LOG: PODMÍNKY FILTRACE ---
+        string requiredPatterns = "";
+        if (isSeriesSearch)
+        {
+            requiredPatterns = $"s{season!.Value:D2}e{episode!.Value:D2}, {season.Value}x{episode.Value:D2}, {season.Value:D2}x{episode.Value:D2}";
+        }
+        Console.WriteLine($"\n⭐ PODMÍNKY FILTRACE:");
+        Console.WriteLine($"  - Povinné (AND): Název ('{string.Join(", ", titleKeywords)}')");
+        if (isSeriesSearch)
+        {
+             Console.WriteLine($"  - Povinné (AND): Formát S/E (jeden z: {requiredPatterns})");
+             // OPRAVA CHYBY CS0019: Převod int? na string před ??
+             Console.WriteLine($"  - Pomocné/Priorita: Přesná shoda S{season!.Value:D2}E{episode!.Value:D2} OR Název epizody OR Rok vydání ({year?.ToString() ?? "N/A"}) + Velikost");
+        }
+        else if (year.HasValue)
+        {
+             Console.WriteLine($"  - Pomocné/Priorita: Rok vydání ({year.Value}) + Velikost");
+        }
+        else
+        {
+            Console.WriteLine($"  - Pomocné/Priorita: Velikost");
+        }
+        Console.WriteLine($"---------------------------------------------");
+        // ------------------------------------
 
         var files = allRawFiles
             .Where(f => {
@@ -86,6 +124,7 @@ public class WebshareService : IWebshareService
                 
                 // --- VYLEPŠENÍ 1: Vše porovnáváme bez diakritiky ---
                 var fileNameNoDiacritics = RemoveDiacritics(f.Name.ToLowerInvariant());
+                // POVINNÁ PODMÍNKA 1: Shoda na název seriálu
                 return titleKeywords.All(k => fileNameNoDiacritics.Contains(RemoveDiacritics(k)));
             })
             .Where(f => {
@@ -93,20 +132,58 @@ public class WebshareService : IWebshareService
                 
                 var fileNameLower = f.Name.ToLowerInvariant().Replace(".", " ").Replace("_", " ").Replace("-", " ");
                 
-                // --- VYLEPŠENÍ 2: Přidán nový formát pro seriály ---
+                // POVINNÁ PODMÍNKA 2: Shoda na formát SxxEyy, 1x01, atd.
                 var patterns = new[] { 
-                    $"s{season:D2}e{episode:D2}", // s01e01
-                    $"{season}x{episode:D2}",     // 1x01
-                    $"{season:D2}x{episode:D2}"    // 01x01
+                    $"s{season!.Value:D2}e{episode!.Value:D2}", // s01e01
+                    $"{season.Value}x{episode.Value:D2}",     // 1x01
+                    $"{season.Value:D2}x{episode.Value:D2}"    // 01x01
                 };
                 return patterns.Any(p => fileNameLower.Contains(p));
             })
             .Where(f => videoExtensions.Any(ext => f.Name.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
-            .OrderByDescending(f => f.Size)
+            .ToList(); 
+            
+        // --- ŘAZENÍ (Pomocná podmínka: Čistý SxxEyy formát A ROK VYDÁNÍ) ---
+        if (isSeriesSearch)
+        {
+            // Přesný vzor S01E01 pro prioritizaci souborů s čistým označením (simulace názvu epizody).
+            var fullMatchPattern = $"s{season!.Value:D2}e{episode!.Value:D2}";
+            
+            // Vzor pro rok vydání (pokud je k dispozici)
+            string yearPattern = year.HasValue ? year.Value.ToString() : string.Empty;
+
+
+            // Vytvoříme anonymní typ pro řazení
+            var rankedFiles = files.Select(f => new 
+            {
+                f.Ident,
+                f.Name,
+                f.Size,
+                // Pomocná podmínka 1: Přesná shoda SxxEyy (simuluje Název epizody)
+                HasExactSeasonEpisodeFormat = f.Name.ToLowerInvariant().Replace(".", "").Contains(fullMatchPattern),
+                // Pomocná podmínka 2: Rok vydání
+                HasYearMatch = !string.IsNullOrEmpty(yearPattern) && f.Name.ToLowerInvariant().Contains(yearPattern) 
+            })
+            .OrderByDescending(f => f.HasExactSeasonEpisodeFormat) // Priorita 1: Přesná SxxEyy shoda (simuluje Název epizody)
+            .ThenByDescending(f => f.HasYearMatch)                // Priorita 2: Rok vydání
+            .ThenByDescending(f => f.Size)                         // Priorita 3: Velikost
             .ToList();
 
-        Console.WriteLine($"\n👍 Po filtraci zbylo {files.Count} relevantních souborů. Zde je prvních 15:");
-        foreach (var file in files.Take(15)) { Console.WriteLine($"  -> Název: {file.Name}, Velikost: {Math.Round((decimal)file.Size / (1024 * 1024 * 1024), 2)} GB"); }
+            // Převedeme zpět na původní dynamický typ, aby zbytek kódu fungoval
+            files = rankedFiles.Select(f => new { f.Ident, f.Name, f.Size }).ToList();
+        }
+        else 
+        {
+            files = files.OrderByDescending(f => f.Size).ToList();
+        }
+        // --- Konec Řazení ---
+
+        // --- LOG: TOP 15 SOUBORŮ ---
+        Console.WriteLine($"\n👍 Po filtraci a seřazení zbylo {files.Count} relevantních souborů. TOP 15 názvů:");
+        for (int i = 0; i < Math.Min(15, files.Count); i++)
+        {
+             Console.WriteLine($"  [{i + 1:D2}] -> {files[i].Name} ({Math.Round((decimal)files[i].Size / (1024 * 1024 * 1024), 2)} GB)");
+        }
         Console.WriteLine("---------------------------------------------");
 
         List<long> sizeLimitsBytes;
@@ -118,6 +195,9 @@ public class WebshareService : IWebshareService
 
         var selectedLinks = new List<WebshareLinkDto>();
         var availableFiles = new List<dynamic>(files);
+        
+        // Pomocný seznam pro logování názvů TOP 4 souborů
+        var top4FileNames = new List<string>();
 
         foreach (var limit in sizeLimitsBytes)
         {
@@ -125,11 +205,21 @@ public class WebshareService : IWebshareService
             if (bestFit != null)
             {
                 selectedLinks.Add(new WebshareLinkDto { Ident = bestFit.Ident, SizeGb = Math.Round((decimal)bestFit.Size / (1024 * 1024 * 1024), 2) });
+                top4FileNames.Add($"{bestFit.Name} ({Math.Round((decimal)bestFit.Size / (1024 * 1024 * 1024), 2)} GB)");
                 availableFiles.Remove(bestFit);
             }
         }
         
-        Console.WriteLine($"\n✅ Finálně vybráno {selectedLinks.Count} odkazů:");
+        // --- LOG: FINÁLNÍ VÝBĚR A NÁZVY ---
+        Console.WriteLine($"\n✅ Finálně vybráno {selectedLinks.Count} odkazů.");
+        Console.WriteLine("TOP 4 NÁZVY SOUBORŮ:");
+        for (int i = 0; i < Math.Min(4, top4FileNames.Count); i++)
+        {
+             Console.WriteLine($"  [{i + 1}] -> {top4FileNames[i]}");
+        }
+        Console.WriteLine("---------------------------------------------");
+        
+        Console.WriteLine("DETAILY (Ident/Velikost):");
         foreach (var link in selectedLinks) { Console.WriteLine($"  -> Ident: {link.Ident}, Velikost: {link.SizeGb} GB"); }
         Console.WriteLine("=============================================\n");
         

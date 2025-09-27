@@ -28,6 +28,20 @@ namespace KodiBackend.Services
         // NOVÁ KONSTANTA: Nejlepší seriály (obecné) z ČSFD
         private const string CsfdTopShowGeneralUrl = "https://www.csfd.cz/zebricky/serialy/nejlepsi/"; 
 
+        // NOVÁ KONSTANTA: URL pro žebříček dokumentárních seriálů
+        private const string CsfdTopShowDocumentariesUrl = "https://www.csfd.cz/zebricky/vlastni-vyber/?filter=rlW0rKOyVwbmYPWipzyanJ4vBz51oTjfVzqyoaWyVwcoZGAqYPW5MJSlK2Mlo20vBz51oTjfVayyLKWsqT8vBz51oTjfVzSwqT9lVwcoKFjvMTylMJA0o3VvBygqsD";
+        
+        // NOVÁ KONSTANTA: URL pro žebříček pohádek
+        private const string CsfdTopFairyTalesUrl = "https://www.csfd.cz/zebricky/vlastni-vyber/?filter=rlW0rKOyVwbkYPWipzyanJ4vBz51oTjfVzqyoaWyVwcoZmOqYPW5MJSlK2Mlo20vBz51oTjfVayyLKWsqT8vBz51oTjfVzSwqT9lVwcoKFjvMTylMJA0o3VvBygqsD";
+
+        // NOVÁ KONSTANTA: URL pro žebříček hudebních filmů
+        private const string CsfdTopMusicalUrl = "https://www.csfd.cz/zebricky/vlastni-vyber/?filter=rlW0rKOyVwbkYPWipzyanJ4vBz51oTjfVzqyoaWyVwcoZwWqYPW5MJSlK2Mlo20vBz51oTjfVayyLKWsqT8vBz51oTjfVzSwqT9lVwcoKFjvMTylMJA0o3VvBygqsD";
+
+        // *** ZAČÁTEK NOVÉ ČÁSTI ***
+        // NOVÁ KONSTANTA: URL pro žebříček koncertů
+        private const string CsfdTopConcertsUrl = "https://www.csfd.cz/zebricky/vlastni-vyber/?filter=rlW0rKOyVwb2YPWipzyanJ4vBz51oTjfVzqyoaWyVwcoKFjvrJIupy9zpz9gVwchqJkfYPW5MJSlK3EiVwchqJkfYPWuL3EipvV6J10fVzEcpzIwqT9lVwcoKK0";
+        // *** KONEC NOVÉ ČÁSTI ***
+
         public CSFDService(HttpClient httpClient)
         {
             _httpClient = httpClient;
@@ -260,5 +274,56 @@ namespace KodiBackend.Services
             // ZMĚNA: Používáme nový mechanismus stránkování ?from=X, zkusíme stáhnout 500 seriálů
             return await ScrapeGeneralTitlesWithPagination(CsfdTopShowGeneralUrl, maxItems: 500);
         }
+
+        // NOVÁ METODA: Stahuje top dokumentární seriály z ČSFD
+        public async Task<List<string>> GetTopDocumentaryShowTitlesFromCsfdAsync()
+        {
+            Console.WriteLine("[CSFD DIAG] Zahajuji scraping ČSFD žebříčku dokumentárních seriálů...");
+            
+            // Používáme stránkovanou metodu pro filtrované žebříčky (stejně jako u CZ/SK)
+            var titles = await ScrapeFilteredTitlesWithPagination(CsfdTopShowDocumentariesUrl, maxPages: 25); 
+
+            Console.WriteLine($"[CSFD DIAG] Úspěšně staženo {titles.Count} unikátních titulů dokumentárních seriálů.");
+
+            return titles.Take(1000).ToList(); // Omezíme na 1000, stejně jako ostatní
+        }
+        
+        // NOVÁ METODA: Stahuje top pohádky z ČSFD
+        public async Task<List<string>> GetTopFairyTaleTitlesFromCsfdAsync()
+        {
+            Console.WriteLine("[CSFD DIAG] Zahajuji scraping ČSFD žebříčku pohádek...");
+            
+            var titles = await ScrapeFilteredTitlesWithPagination(CsfdTopFairyTalesUrl, maxPages: 25); 
+
+            Console.WriteLine($"[CSFD DIAG] Úspěšně staženo {titles.Count} unikátních titulů pohádek.");
+
+            return titles.Take(1000).ToList();
+        }
+        
+        // NOVÁ METODA: Stahuje top hudební filmy z ČSFD
+        public async Task<List<string>> GetTopMusicalTitlesFromCsfdAsync()
+        {
+            Console.WriteLine("[CSFD DIAG] Zahajuji scraping ČSFD žebříčku hudebních filmů...");
+            
+            var titles = await ScrapeFilteredTitlesWithPagination(CsfdTopMusicalUrl, maxPages: 25); 
+
+            Console.WriteLine($"[CSFD DIAG] Úspěšně staženo {titles.Count} unikátních titulů hudebních filmů.");
+
+            return titles.Take(1000).ToList();
+        }
+
+        // *** ZAČÁTEK NOVÉ ČÁSTI ***
+        // NOVÁ METODA: Stahuje top koncerty z ČSFD
+        public async Task<List<string>> GetTopConcertTitlesFromCsfdAsync()
+        {
+            Console.WriteLine("[CSFD DIAG] Zahajuji scraping ČSFD žebříčku koncertů...");
+            
+            var titles = await ScrapeFilteredTitlesWithPagination(CsfdTopConcertsUrl, maxPages: 25); 
+
+            Console.WriteLine($"[CSFD DIAG] Úspěšně staženo {titles.Count} unikátních titulů koncertů.");
+
+            return titles.Take(1000).ToList();
+        }
+        // *** KONEC NOVÉ ČÁSTI ***
     }
 }

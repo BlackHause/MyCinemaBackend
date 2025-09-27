@@ -277,6 +277,26 @@ namespace KodiBackend.Controllers
             });
         }
         
+        // *** ZAČÁTEK NOVÉ ČÁSTI ***
+        // NOVÝ ENDPOINT: Přidává top dokumentární seriály z ČSFD
+        [HttpPost("top-documents")]
+        public async Task<IActionResult> PostTopDocumentaryShows([FromBody] BulkAddRequest request)
+        {
+            if (request.Count <= 0) return BadRequest("Počet musí být větší než 0.");
+            
+            // Voláme novou metodu v CSFDService
+            var csfdTitles = await _csfdService.GetTopDocumentaryShowTitlesFromCsfdAsync(); 
+            var (addedTitles, skippedTitles, failedTitles) = await AddShowsFromTitlesAsync(csfdTitles, request.Count);
+
+            return Ok(new { 
+                Message = $"Úspěšně přidáno {addedTitles.Count} dokumentárních seriálů z ČSFD. Přeskočeno {skippedTitles.Count} existujících. Ignorováno {failedTitles.Count} seriálů.", 
+                AddedTitles = addedTitles, 
+                SkippedTitles = skippedTitles,
+                FailedTitles = failedTitles
+            });
+        }
+        // *** KONEC NOVÉ ČÁSTI ***
+        
         [HttpGet("{id}")]
         public async Task<ActionResult<Show>> GetShow(int id)
         {
@@ -296,7 +316,7 @@ namespace KodiBackend.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<Show>> PostShow(ShowCreateRequest request)
+        public async Task<ActionResult<object>> PostShow(ShowCreateRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.Title))
             {
@@ -310,6 +330,7 @@ namespace KodiBackend.Controllers
                 return NotFound($"Seriál s názvem '{request.Title}' nebyl na TMDb nalezen.");
             }
             
+            // --- Duplicity (Duplicity check MUST REMAIN) ---
             var existingShow = await _context.Shows.FirstOrDefaultAsync(s => s.TMDbId == showFromTMDb.TMDbId);
 
             if (existingShow != null)
@@ -317,86 +338,39 @@ namespace KodiBackend.Controllers
                  return Conflict($"Seriál s názvem '{showFromTMDb.Title}' (TMDb ID: {showFromTMDb.TMDbId}) již v databázi existuje.");
             }
 
-            if (await _context.Shows.AnyAsync(s => NormalizeTitleForComparison(s.Title!) == NormalizeTitleForComparison(showFromTMDb.Title!)))
+            // Opravená duplicity kontrola s načtením do paměti (client evaluation)
+            var normalizedTitleFromRequest = NormalizeTitleForComparison(showFromTMDb.Title!);
+            var allExistingNormalizedTitles = new HashSet<string>(await _context.Shows
+                .Where(s => s.Title != null)
+                .Select(s => s.Title!)
+                .ToListAsync()
+                .ContinueWith(t => t.Result.Select(NormalizeTitleForComparison)));
+
+            if (allExistingNormalizedTitles.Contains(normalizedTitleFromRequest))
             {
                  return Conflict($"Seriál s názvem '{showFromTMDb.Title}' již v databázi existuje (konzistentní shoda).");
             }
-
-            if (await _context.HistoryEntries.AnyAsync(h => h.Title == request.Title && h.MediaType == "Show"))
-            {
-                return Conflict($"Seriál '{request.Title}' je na blacklistu a byl dříve označen jako nepropojitelný/příliš dlouhý.");
-            }
-
+            // --- Konec Duplicity ---
+            
+            // ZMĚNA: PŘESKOČENÍ VŠECH FILTRŮ A HLEDÁNÍ ODKAZŮ PRO RYCHLÉ MANUÁLNÍ PŘIDÁNÍ
+            
+            // --- PŮVODNÍ KÓD HLEDÁNÍ ODKAZŮ A OMEZENÍ DÉLKY JE PŘESKOČEN ---
+            /*
             int totalEpisodes = showFromTMDb.Seasons.Sum(s => s.Episodes.Count);
-            if (totalEpisodes > MaxEpisodesForProcessing)
-            {
-                 _context.HistoryEntries.Add(new HistoryEntry 
-                    { 
-                        Title = request.Title, 
-                        MediaType = "Show", 
-                        Reason = $"Příliš dlouhý ({totalEpisodes} epizod).",
-                        Timestamp = DateTime.UtcNow
-                    });
-                await _context.SaveChangesAsync();
-                return BadRequest($"Seriál '{showFromTMDb.Title}' nelze přidat, protože má {totalEpisodes} epizod a překračuje maximální povolený limit {MaxEpisodesForProcessing}. Byl přidán na blacklist.");
-            }
+            if (totalEpisodes > MaxEpisodesForProcessing) { ... }
+            if (await _context.HistoryEntries.AnyAsync(...)) { ... }
+            if (Genres.Contains("Animace")) { ... }
             
-            if ((showFromTMDb.Genres != null && showFromTMDb.Genres.Contains("Animace")) || JapaneseRegex.IsMatch(showFromTMDb.Title))
-            {
-                 _context.HistoryEntries.Add(new HistoryEntry 
-                    { 
-                        Title = request.Title, 
-                        MediaType = "Show", 
-                        Reason = "Ignorováno: Anime/Animace nebo japonské znaky v titulu (při ručním přidání).",
-                        Timestamp = DateTime.UtcNow
-                    });
-                await _context.SaveChangesAsync();
-                return BadRequest($"Seriál '{showFromTMDb.Title}' nelze přidat, protože je označen jako Anime/Animace. Byl přidán na blacklist.");
-            }
-
             bool foundAnyLink = false;
-            
-            foreach (var season in showFromTMDb.Seasons.OrderBy(s => s.SeasonNumber))
-            {
-                foreach (var episode in season.Episodes)
-                {
-                    var webshareLinks = await _webshareService.FindLinksAsync(
-                        showFromTMDb.Title, 
-                        null, 
-                        season.SeasonNumber, 
-                        episode.EpisodeNumber);
-                    
-                    if (webshareLinks.Any())
-                    {
-                        foundAnyLink = true;
-                        foreach (var linkDto in webshareLinks.Take(4))
-                        {
-                            episode.Links.Add(new WebshareLink 
-                            { 
-                                FileIdent = linkDto.Ident, 
-                                Quality = $"{linkDto.SizeGb:F2} GB" 
-                            });
-                        }
-                    }
-                }
-            }
+            foreach (var season in showFromTMDb.Seasons.OrderBy(s => s.SeasonNumber)) { ... }
+            if (!foundAnyLink) { ... }
+            */
 
-            if (!foundAnyLink)
-            {
-                 _context.HistoryEntries.Add(new HistoryEntry 
-                    { 
-                        Title = request.Title, 
-                        MediaType = "Show", 
-                        Reason = "Nenalezen žádný Webshare odkaz.",
-                        Timestamp = DateTime.UtcNow
-                    });
-                await _context.SaveChangesAsync();
-                return BadRequest($"Seriál '{showFromTMDb.Title}' nelze přidat, protože se nenašel žádný Webshare odkaz. Byl přidán na blacklist.");
-            }
-
+            // --- JEDINÝ PŘÍKAZ K PROVEDENÍ ---
             _context.Shows.Add(showFromTMDb);
             await _context.SaveChangesAsync();
 
+            // Návrat s přidaným objektem
             return CreatedAtAction(nameof(GetShow), new { id = showFromTMDb.Id }, showFromTMDb);
         }
 

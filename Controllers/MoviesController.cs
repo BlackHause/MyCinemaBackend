@@ -345,6 +345,59 @@ namespace KodiBackend.Controllers
             });
         }
         
+        // NOVÝ ENDPOINT: Přidává top pohádky z ČSFD
+        [HttpPost("top-pohadky")]
+        public async Task<IActionResult> PostTopFairyTaleMovies([FromBody] BulkAddRequest request)
+        {
+            if (request.Count <= 0) return BadRequest("Počet musí být větší než 0.");
+            
+            var csfdTitles = await _csfdService.GetTopFairyTaleTitlesFromCsfdAsync(); 
+            var (addedTitles, skippedTitles, failedTitles) = await AddMoviesFromTitlesAsync(csfdTitles, request.Count);
+
+            return Ok(new { 
+                Message = $"Úspěšně přidáno {addedTitles.Count} pohádek z ČSFD. Přeskočeno {skippedTitles.Count} existujících. Ignorováno {failedTitles.Count} filmů.", 
+                AddedTitles = addedTitles, 
+                SkippedTitles = skippedTitles,
+                FailedTitles = failedTitles
+            });
+        }
+        
+        // NOVÝ ENDPOINT: Přidává top hudební filmy z ČSFD
+        [HttpPost("top-hudebni")]
+        public async Task<IActionResult> PostTopMusicalMovies([FromBody] BulkAddRequest request)
+        {
+            if (request.Count <= 0) return BadRequest("Počet musí být větší než 0.");
+            
+            var csfdTitles = await _csfdService.GetTopMusicalTitlesFromCsfdAsync(); 
+            var (addedTitles, skippedTitles, failedTitles) = await AddMoviesFromTitlesAsync(csfdTitles, request.Count);
+
+            return Ok(new { 
+                Message = $"Úspěšně přidáno {addedTitles.Count} hudebních filmů z ČSFD. Přeskočeno {skippedTitles.Count} existujících. Ignorováno {failedTitles.Count} filmů.", 
+                AddedTitles = addedTitles, 
+                SkippedTitles = skippedTitles,
+                FailedTitles = failedTitles
+            });
+        }
+        
+        // *** ZAČÁTEK NOVÉ ČÁSTI ***
+        // NOVÝ ENDPOINT: Přidává top koncerty z ČSFD
+        [HttpPost("top-koncerty")]
+        public async Task<IActionResult> PostTopConcertMovies([FromBody] BulkAddRequest request)
+        {
+            if (request.Count <= 0) return BadRequest("Počet musí být větší než 0.");
+            
+            var csfdTitles = await _csfdService.GetTopConcertTitlesFromCsfdAsync(); 
+            var (addedTitles, skippedTitles, failedTitles) = await AddMoviesFromTitlesAsync(csfdTitles, request.Count);
+
+            return Ok(new { 
+                Message = $"Úspěšně přidáno {addedTitles.Count} koncertů z ČSFD. Přeskočeno {skippedTitles.Count} existujících. Ignorováno {failedTitles.Count} filmů.", 
+                AddedTitles = addedTitles, 
+                SkippedTitles = skippedTitles,
+                FailedTitles = failedTitles
+            });
+        }
+        // *** KONEC NOVÉ ČÁSTI ***
+        
         // Endpoint New-Releases
         [HttpPost("new-releases")]
         public async Task<IActionResult> PostNewMovies([FromBody] BulkAddRequest request)
